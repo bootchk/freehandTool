@@ -1,0 +1,27 @@
+                   -------------------------
+                   freehand drawing tool
+                    
+                   Copyright 2012 L. Konneker
+                   -------------------------
+
+1. About
+========
+
+A freehand drawing tool.
+Input: pointer device (e.g. mouse) events.
+Output: graphic vector path (lines and splines) which a GUI toolkit renders.
+Not a complete app, only a component.
+Includes a rudimentary GUI app for testing.
+Written in pure Python.
+
+Tags:
+- freehand drawing.
+- computational geometry.
+- incremental (dynamic) line tracing.
+- Python coroutines.
+- pipe of filters.
+- GUI toolkit Qt.
+
+Derived from potrace by Peter Selinger.
+
+See much more technical discussion in the code.
