@@ -50,7 +50,7 @@ The data between the filters are sequences (streams) of:
 - pointer turns, between pointer positions not on same axis
 - vectors (straight lines) fitting end to end and quaranteed to pass through every PointerPosition (the pixel around it.)
 - vectors with adjusted real vertexes (not implemented)
-- graphic objects (lines and curves)
+- graphic objects (lines and segments)
 - optimized graphic objects (minimal count and minimal error) (not implemented)
 
 The filters are "extended generator" or coroutine or "reverse generators."
@@ -114,7 +114,7 @@ Since the pipeline lags, there is code to shut down the pipeline, generating fin
 PointerPosition.
 
 
-TODO
+FUTURE
 ====
 adapt tool to any GUI kit
 jitter filter: doesn't seem to be necessary
@@ -166,14 +166,18 @@ From Qt we use:
  and for adding graphic items to scheme
 - QGraphicPathItem for the generated drawable graphic (comprising line and curve elements),
 to represent user's stroke, 
-- OR a set of QGraphicItems for lines and curves
+- OR a set of QGraphicItems for lines and segments
 
 '''
-
-from PySide.QtCore import *
-from PySide.QtGui import *
 import sys
 import traceback
+
+# !!! QTime for timing of cusps
+from PySide.QtCore import QLineF, QPointF, QTime
+# !!! Otherwise, no dependence on Qt graphics
+
+from polySegment import PolySegment, GraphicsLine
+from segment import LineSegment, CurveSegment
 
 
 # Parameter: degree of smoothing for curve fitting
@@ -287,7 +291,7 @@ class FreehandTool(object):
     
     startPosition = self._scenePositionFromEvent(event)
     # Create contiguous PointerTrack in a new single QGraphicPathItem
-    self.path = AddingGraphicsPathItem(startingPoint=startPosition)
+    self.path = PolySegment(startingPoint=startPosition)
     self.scene.addItem(self.path)     # Display pointerTrack
     self.pathTailGhost.showAt(startPosition)
     
@@ -305,9 +309,9 @@ class FreehandTool(object):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
-    self.path.addItem( (self._scenePositionFromEvent(event), ))
+    self.path.addSegments( [LineSegment(self.path.getEndPoint(), self._scenePositionFromEvent(event))])
     
-      
+
   
   
   '''
@@ -384,7 +388,7 @@ class FreehandTool(object):
         # else current path (all turns) still satisfied by a PathLine: wait
           
         previousTurn = turn  # Roll forward  !!! Every turn, not just on send()
-    except Exception as inst:
+    except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
       # Unexpected programming errors, which are obscured unless caught
       print "Exception in LineGenerator"
@@ -399,7 +403,7 @@ class FreehandTool(object):
   
   def CurveGenerator(self, startLine):
     ''' 
-    Takes lines, generates tuples of graphic items (lines or splines).
+    Takes lines, generates tuples of segments (lines or splines).
     Returns spline or cusp (two straight lines) defined between midpoints of previous two lines.
     On startup, previous PathLine is nullLine (!!! not None), but this still works.
     '''
@@ -409,23 +413,21 @@ class FreehandTool(object):
       while True:
         line, isLineForced = (yield)
         if isLineForced:
-          ''' User speed indicates wants a cusp-like fit, regardless of angle between lines.'''
-          curves, pathEndPoint = self.curvesFromLineMidToEnd(previousLine, line)
+          ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
+          segments, pathEndPoint = self.segmentsFromLineMidToEnd(previousLine, line)
           previousLine = nullLine(pathEndPoint) # !!! next element from midpoint of nullLine
         else:
           ''' Fit to path, possibly a cusp. '''
-          curves, pathEndPoint = self.curvesFromLineMidToMid(previousLine, line)  
-          # curves = nullcurveFromLines(previousLine, line) # TEST
+          segments, pathEndPoint = self.segmentsFromLineMidToMid(previousLine, line)  
+          # segments = nullcurveFromLines(previousLine, line) # TEST
           previousLine = line  # Roll forward
         
         # Add results to PointerTrack.
-        for item in curves:
-          # self.scene.addItem(item)  # add new path comprising this segment
-          self.path.addItem(item) # add segment to existing path
+        self.path.addSegments(segments) # add segment to existing path
         
         self.pathTailGhost.updateStart(pathEndPoint)  # Update ghost to start at end of PointerTrack
        
-    except Exception as inst:
+    except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
       # Unexpected programming errors, which are obscured unless caught
       print "Exception in CurveGenerator"
@@ -499,7 +501,7 @@ class FreehandTool(object):
     directions.update(previousTurn, currentTurn)
     if len(directions) > 3:
       # a path with four directions can't be approximated with one vector
-      # TODO, end point is starting pixel of segment ???
+      # end point is starting pixel of segment ???
       print "Four directions"
       self.resetLineFittingFilter()
       # Note end is previousTurn, not current Turn
@@ -548,23 +550,14 @@ class FreehandTool(object):
   Curve fitting filter.
   Fit a spline to two vectors.
   '''
-  
-  def nullcurveFromLines(self, line1, line2):
-    ''' 
-    Return QGraphicsItem to represent tail of PointerPath.
-    FOR TESTING. Generates a simple LinePathElement (instead of SplinePathElement.)
-    After all, a straight line is a curve with null curvature.
-    '''
-    return (QGraphicsLineItem(line1), ) # Note lag one PathLine
-    # TODO broken, needs to return pathEndPoint
     
 
-  def curvesFromLineMidToMid(self, line1, line2):
+  def segmentsFromLineMidToMid(self, line1, line2):
     '''
-    Return a tuple of QGraphicsItems that fit midpoints of two lines.
+    Return a sequence of segments that fit midpoints of two lines. Also return new path end point.
     Two cases, depend on angle between lines:
-    - acute angle: cusp: returns two lines.
-    - obtuse angle: not cusp: return spline that smoothly fits bend.
+    - acute angle: cusp: returns two LineSegments.
+    - obtuse angle: not cusp: return one CurveSegment that smoothly fits bend.
     '''
     
     # aliases for three points defined by two abutting PathLines
@@ -573,7 +566,7 @@ class FreehandTool(object):
     point3 = line2.p2()
     
     # midpoints of PathLines
-    # midpoint1 = self.interval(1/2.0, point2, point1)  # needed if creating QGraphicPathItem directly
+    midpoint1 = self.interval(1/2.0, point2, point1)  # needed if creating QGraphicPathItem directly
     midpoint2 = self.interval(1/2.0, point3, point2)
     
     denom = self.ddenom(point1, point3);
@@ -587,7 +580,7 @@ class FreehandTool(object):
         alpha = 4/3.0
 
     if alpha > ALPHAMAX:
-      return self.createCusp(cuspPoint=point2, endPoint=midpoint2)
+      return self.segmentsForCusp(cuspPoint=point2, endPoint=midpoint2)
     else:
       alpha = self.clampAlpha(alpha)
       '''
@@ -595,76 +588,43 @@ class FreehandTool(object):
       as second control point for previous spline,
       said control points are colinear and joint between consecutive splines is smooth.
       '''
-      return self.createSplinePathElement(controlPoint1=self.interval(0.5+0.5*alpha, point1, point2), 
-                              controlPoint2=self.interval(0.5+0.5*alpha, point3, point2), 
-                              endPt=midpoint2)
-        
-  def curvesFromLineMidToEnd(self, line1, line2):
-    '''
-    Return a tuple (two or three) of QGraphicsItems that fit midpoint of first PathLine to end of second PathLine.
-    '''
-    midToMidCurves, pathEndPoint = self.curvesFromLineMidToMid(line1, line2)
-    finalEndPoint = line2.p2()
-    #print "Mid to end"
-    midToEnd = self.createLinePathElement(finalEndPoint) # implicitly starts at current path end
-    # !!! for catenation, make tuple by "(foo, )"
-    return midToMidCurves + (midToEnd, ), finalEndPoint
-    
+      print "mid to mid curve"
+      return ([CurveSegment(startPoint=midpoint1,
+                            controlPoint1=self.interval(0.5+0.5*alpha, point1, point2), 
+                            controlPoint2=self.interval(0.5+0.5*alpha, point3, point2), 
+                            endPoint=midpoint2)], 
+              midpoint2)
       
 
+  def segmentsFromLineMidToEnd(self, line1, line2):
+    '''
+    Return sequence (two or three) of segments that fit midpoint of first PathLine to end of second PathLine.
+    '''
+    midToMidsegments, endOfMidToMid = self.segmentsFromLineMidToMid(line1, line2)
+    finalEndPoint = line2.p2()
+    print "Mid to end"
+    midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
+    return midToMidsegments + [midToEnd], finalEndPoint
+
+
 
   '''
-  Auxiliary functions for curvesFromLineMidToMid() etc
+  Auxiliary functions for segmentsFromLineMidToMid() etc
   '''
-  
-  def createLinePathElement(self, endPoint):
-    ''' 
-    Create our representation of a LinePathElement from current end of PointerTrack to endPoint.
-    Mangle to signature of AddingGraphicsPathItem.addItem()
-    A LinePathElement is a tuple comprising single endpoint.
-    (the starting point of LinePathElement is implicitly the end of PointerTrack.)
-    '''
-    return (endPoint, )
 
-
-  def createCusp(self, cuspPoint, endPoint):
+  def segmentsForCusp(self, cuspPoint, endPoint):
     '''
-    Create sharp cusp. Return two straight LinePathElements,
+    Return list of segments for sharp cusp. Return two straight LinePathElements and endPoint.
     from midpoints of two generating lines (not passed end of path, and endPoint) 
-    to point where generating lines meet (cuspPoint)
-    Note we already generated graphic item to first midpoint,
-    and will subsequently generate graphic item from second midpoint.
+    to point where generating lines meet (cuspPoint).
+    Note we already generated segment to first midpoint,
+    and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    '''
-    Equivalent if adding to scene: 
-    line1 = QGraphicsLineItem(QLineF(midpoint1, point2))
-    line2 = QGraphicsLineItem(QLineF(point2, midpoint2))
-    '''
-    '''
-    Return tuple of path elements, each element a LinePathElement.
-    Also return end point of PointerTrack.
-    '''
-    return (self.createLinePathElement(cuspPoint), self.createLinePathElement(endPoint)), endPoint
+    return [LineSegment(self.path.getEndPoint(), cuspPoint), LineSegment(cuspPoint, endPoint)], endPoint
   
   
-  def createSplinePathElement(self, controlPoint1, controlPoint2, endPt):
-    ''' 
-    Mangle to signature of AddingGraphicsPathItem.addItem().
-    Return tuple of path elements.  Here, a single element comprising three tuple for spline.
-    Also return end of PointerTrack.
-    !!! Note start point is not present.
-    '''
-    print "curve"
-    """
-    Equivalent if adding to scene:
-    return (self.getCurveQGraphicsItem(startPt=midpoint1, 
-      controlPt1=self.interval(.5+.5*alpha, point1, point2), 
-      controlPt2=self.interval(.5+.5*alpha, point3, point2), 
-      endPt=midpoint2), ) # !!! Python idiom to force a tuple
-    """
-    return ((controlPoint1, controlPoint2, endPt), ), endPt
-  
+
   
   def interval(self, fraction, point1, point2):
     ''' 
@@ -708,6 +668,7 @@ class FreehandTool(object):
     else:             return alpha
 
 
+  """
   def getCurveQGraphicsItem(self, startPt, controlPt1, controlPt2, endPt):
     '''
     In Qt > v4.0 there is no QGraphicsCurveItem, only QGraphicsPathItem with a curve in its path.
@@ -716,7 +677,8 @@ class FreehandTool(object):
     path.moveTo(startPt)
     path.cubicTo(controlPt1, controlPt2, endPt)
     return QGraphicsPathItem(path)
-    
+  """
+   
   def labelLine(self, string, position):
     ''' For testing '''
     text = self.scene.addSimpleText(string)
@@ -805,7 +767,7 @@ class PointerTrackGhost(object):
   Hidden when user not using freehand tool.
   '''
   def __init__(self, scene):
-    self.lineItem = QGraphicsLineItem(QLineF(QPointF(0,0), QPointF(0,0)))
+    self.lineItem = GraphicsLine()
     self.lineItem.hide()
     self.start = None
     self.end = None
@@ -830,81 +792,6 @@ class PointerTrackGhost(object):
 
 
 
-class AddingGraphicsPathItem(QGraphicsPathItem):
-  ''' 
-  Item in scene that is a path and supports adding segments.
-  Specific to Qt GUI toolkit.
-  '''
-  def __init__(self, startingPoint):
-    super(AddingGraphicsPathItem, self).__init__()
-    path = QPainterPath(startingPoint)
-    self.setPath(path)
-
-    
-  def addItem(self, item):
-    ''' 
-    Add GraphicPathElement (line or spline) to path.
-    Item is tuple:
-    - line: (endpoint)
-    - curve: ( cp1, cp2, endpoint)
-    '''
-    path = self.path()
-    # hack, non-polymorphic
-    if len(item) == 3: # three tuple for cubic from end of path
-      path.cubicTo(*item)
-    elif len(item) == 1:  # tuple with one endpoint of line
-      path.lineTo(*item)
-    # !!! path is NOT an alias for self.path() now, they differ.  Hence:
-    self.setPath(path)
-    # No need to invalidate or update display, at least for Qt
-  
-  # TESTING: helps see segments.  Not necessary for production use.
-  def paint(self, painter, styleOption, widget):
-    ''' Reimplemented to paint elements in alternating colors '''
-    path = self.path()  # alias
-    pathEnd = None
-    i = 0
-    while True:
-      try:
-        element = path.elementAt(i)
-        # print type(element), element.type
-        if element.isMoveTo():
-          pathEnd = QPointF(element.x, element.y)
-          i+=1
-        elif element.isLineTo():
-          newEnd = QPointF(element.x, element.y)
-          painter.drawLine(pathEnd, newEnd)
-          pathEnd = newEnd
-          i+=1
-        elif element.isCurveTo():
-          # Gather curve data, since is spread across elements of type curveElementData
-          cp1 = QPointF(element.x, element.y)
-          element = path.elementAt(i+1)
-          cp2 = QPointF(element.x, element.y)
-          element = path.elementAt(i+2)
-          newEnd = QPointF(element.x, element.y)
-          # create a subpath, since painter has no drawCubic method
-          subpath=QPainterPath()
-          subpath.moveTo(pathEnd)
-          subpath.cubicTo(cp1, cp2, newEnd)
-          painter.drawPath(subpath)
-          
-          pathEnd = newEnd
-          i+=3
-        else:
-          print "unhandled path element", element.type
-          i+=1
-        if i >= path.elementCount():
-          break
-      except Exception as inst:
-        print inst
-        break
-        
-      # Alternate colors
-      if i%2 == 1:
-        painter.setPen(Qt.blue)
-      else:
-        painter.setPen(Qt.red)
       
   
 
