@@ -1,7 +1,11 @@
 '''
-FreehandTool understands straight segments and curved segments,
-but PolySegment represents both by the mathematical abstraction *curve*
-(although curves for straight lines are created straight.)
+FreehandTool understands straight segments and curved segments.
+That is, it wants an API that offers lines and curves.
+These classes give that API.
+
+However, PolySegment represents both lines and curves 
+by the mathematical abstraction *curve* as represented by a cubic spline or Bezier.
+(Although curves for straight lines are created straight.)
 User can subsequently manipulate segments the same way,
 regardless of their curvature (straight or curved.)
 This is a UI design decision.
@@ -10,7 +14,7 @@ This is a UI design decision.
 
 
 from controlPoint import ControlPoint
-## from relation import import relations
+# FIXME from relation import import relations
 
 class Segment(object):
   '''
@@ -19,15 +23,17 @@ class Segment(object):
   Responsibilities:
   - produce representation as sequence of points
   - know index in parent
-  - create ControlPoints and Relations between them
+  - create ControlPoints and Relations between them (on instantiation)
   - know relations between ControlPoints
   - know endPoint
+  - relay controlPointChanged
   '''
   
   def __init__(self):
-    self.indexInParent = None
+    self.parent = None
+    self.indexOfSegmentInParent = None
     # Every segment has FOUR ControlPoints
-    self.controlPoints = [ControlPoint(), ControlPoint(), ControlPoint(), ControlPoint()]
+    self.controlPoints = [ControlPoint(self, 0), ControlPoint(self, 1), ControlPoint(self, 2), ControlPoint(self, 3)]
     
     
   def __repr__(self):
@@ -43,17 +49,20 @@ class Segment(object):
     return [controlPoint.getCoordinate() for controlPoint in self.controlPoints]
   
   
-  def setIndex(self, indexInParent):
-    self.indexInParent = indexInParent
+  def setIndexInParent(self, parent, indexOfSegmentInParent):
+    self.parent = parent
+    self.indexOfSegmentInParent = indexOfSegmentInParent
     
-  def getIndex(self):
-    return self.indexInParent
+  def getIndexInParent(self):
+    return self.indexOfSegmentInParent
   
   
-  def createRelations(self):
+  def createRelations(self, segmentRole):
     '''
-    Set relations.
-    Standard relations between control points of a Bezier curve.
+    Set standard relations between control points of a Bezier curve.
+    
+    Depends on segmentRole (Start, Middle, End)
+    
     Anchor of one segment TieTo to anchor of next segment.
     Left anchor ArmTo left direction, similarly for right.
     Left anchor OppositeTo right anchor.
@@ -66,7 +75,18 @@ class Segment(object):
     ''' Self end point is self last ControlPoint. '''
     return self.controlPoints[3].getCoordinate()
   
+  def controlPointChanged(self, controlPointIndex):
+    ''' 
+    Event: a control point has changed. 
+    Relay to segment, i.e. update draw.
+    '''
+    self.parent.segmentChanged(segment=self, indexOfSegmentInParent=self.indexOfSegmentInParent)
     
+  def controlPointIter(self):
+    for i in range(0,4):
+      yield self.controlPoints[i]
+  
+  
 class LineSegment(Segment):
   '''
   Line specialization of Segment.
@@ -86,9 +106,13 @@ class LineSegment(Segment):
     For now, use the midpoint for both direction ControlPoints.
     FUTURE divide in thirds.
     '''
-    midpoint = (endPoint - startPoint) / 2
+    midpoint = self.interpolatePoints(startPoint, endPoint)
     self.controlPoints[1].setCoordinate(midpoint)
     self.controlPoints[2].setCoordinate(midpoint)
+
+  def interpolatePoints(self, startPoint, endPoint):
+    # TODO this should be in a vector library
+    return startPoint + (endPoint - startPoint) / 2
 
 
 class CurveSegment(Segment):
@@ -99,8 +123,10 @@ class CurveSegment(Segment):
   '''
   def __init__(self, startPoint, controlPoint1, controlPoint2, endPoint):
     super(CurveSegment, self).__init__()
-    # Set coordinates of anchor ControlPoints, at ends
+    # Anchor ControlPoints, at ends
     self.controlPoints[0].setCoordinate(startPoint)
+    self.controlPoints[3].setCoordinate(endPoint)
+    # Direction controlPoints, not necessarily colinear with Anchors.
     self.controlPoints[1].setCoordinate(controlPoint1)
     self.controlPoints[2].setCoordinate(controlPoint2)
-    self.controlPoints[3].setCoordinate(endPoint)
+    

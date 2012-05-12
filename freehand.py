@@ -231,6 +231,7 @@ class FreehandTool(object):
     self.turnGenerator = None # Flag, indicates pipe is generating
     # Ghost ungenerated tail of PointerPath with LinePathElement
     self.pathTailGhost = PointerTrackGhost(scene)
+    self.path = None  # None until start using tool
     # GUI
     self.scene = scene
     self.view = view
@@ -309,9 +310,14 @@ class FreehandTool(object):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
-    self.path.addSegments( [LineSegment(self.path.getEndPoint(), self._scenePositionFromEvent(event))])
+    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), self._scenePositionFromEvent(event))])
     
-
+  def keyPressEvent(self, event):
+    ''' For testing, simulate a GUI that moves ControlPoints. '''
+    controlPointSet = self.path.getControlPointSet()
+    # delta an arbitrary control point
+    controlPointSet[3].updateCoordinate(QPointF(5,5))
+    # Result should be visible
   
   
   '''
@@ -423,7 +429,7 @@ class FreehandTool(object):
           previousLine = line  # Roll forward
         
         # Add results to PointerTrack.
-        self.path.addSegments(segments) # add segment to existing path
+        self.path.appendSegments(segments) # add segment to existing path
         
         self.pathTailGhost.updateStart(pathEndPoint)  # Update ghost to start at end of PointerTrack
        

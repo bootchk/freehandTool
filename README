@@ -25,3 +25,20 @@ Tags:
 Derived from potrace by Peter Selinger.
 
 See much more technical discussion in the code.
+
+
+2. Version 2.0
+==============
+
+PolySegment, Segment, ControlPoint classes.
+Explicitly model the abstractions of a polyline.
+This more cleanly separates freehandTool from what it produces.
+Demonstrates editing a PolySegment by manipulation of its ControlPoints.
+(Although editing is not graphical, just crude demo via keystrokes.)
+
+
+3. Plans for Version 3.0
+========================
+
+- Relations between ControlPoints defines behavior of manipulations.
+- An API that can be cleanly hooked to a GUI editor.

@@ -41,6 +41,10 @@ class GraphicsView(QGraphicsView):
   def mouseReleaseEvent(self, event):
     self.freehandTool.pointerReleaseEvent(event)
     
+  # TESTING
+  def keyPressEvent(self, event):
+    self.freehandTool.keyPressEvent(event)
+    
     
 
 class MainWindow(QMainWindow):
