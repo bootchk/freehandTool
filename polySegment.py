@@ -24,12 +24,16 @@ IOW, a user using an editor manipulates ControlPoints,
 which propagates changes to Segments to PolySegments.
 See notes below.
 '''
+import functools
 
 from PySide.QtGui import QGraphicsLineItem, QGraphicsPathItem, QPainterPath
 # Qt constants only needed for testing with colored segments
 from PySide.QtCore import QPointF, Qt
 
-from segment import CurveSegment
+from controlPoint import ControlPoint
+from segment import CurveSegment, ARM_TO, TIED_TO, OPPOSITE_TO
+from relations import Relations
+from relationWalker import relationWalker
 
 
 class GraphicsLine(QGraphicsLineItem):
@@ -58,6 +62,8 @@ class PolySegment(QGraphicsPathItem):
   - maintain structure (add segment, update segment, delete(FIXME))
   - know endPoint, startPoint, countSegments
   - get ControlPointSet (so user can manipulate them.)
+  - understand relations between ControlPoints in ControlPointSet
+  - understand meaning of user moving control points
   
   Specific to Qt GUI toolkit.
   
@@ -76,14 +82,53 @@ class PolySegment(QGraphicsPathItem):
   QPainterPath is not updateable, only appendable.
   
   Here, the first QPathElement is type MoveTo, followed by 3-tuples of type CubicTo.
+  
+  ControlPoint Roles and Types
+  ============================
+  
+  ControlPoints play roles.
+  The role of a ControlPoint is not explicitly modeled, 
+  only modeled by relations between ControlPoints and other conditions.
+  
+  The relations of ControlPoints to each other are:
+  - TiedTo: coincident with a Anchor CP of another segment
+  - OppositeTo: is a Anchor CP paired with Anchor CP at opposite end of segment
+  - ArmTo: is a CP of an arm between a Direction CP and an Anchor CP
+  
+  A ControlPoint plays the Anchor role if:
+  - it is ArmTo related (paired with a Direction CP)
+  - AND it is OppositeTo related (paired with an opposite Anchor CP)
+  A ControlPoint playing the Anchor role MAY be TiedTo related (to an Anchor of an adjoining segment)
+  unless it is the starting or ending Anchor of a PolySegment.
+  
+  A ControlPoint plays the Direction role if:
+  - it is ArmTo related 
+  - AND has no other relations
+  
+  We do it this way for flexibility of design:
+  the relations form a network or graph that helps define the behavior when user drags ControlPoints.
+  A drag behavior is defined by a traversal method (specialization of walk()) of the relations network.
   '''
   ELEMENTS_PER_SEGMENT = 3
   
   def __init__(self, startingPoint):
     super(PolySegment, self).__init__()
     self.setPath(QPainterPath(startingPoint))
+    self.relations=Relations()
 
-
+  """
+  @classmethod
+  def determineControlPointRole(cls, instance):
+    ''' 
+    Return role of ControlPoint instance.
+    
+    Role depends on relations and colinearity.
+    '''
+    # if colinear etc.
+    return "Anchor"
+  """
+  
+  
   # Inherits path()
 
 
@@ -208,14 +253,20 @@ class PolySegment(QGraphicsPathItem):
     
   def getControlPointSet(self):
     '''
-    Instantiate ControlPoints and Segments for self.
+    Instantiate for self:
+    - ControlPoints
+    - Segments
+    - Relations (among ControlPoints)
     Returns list of ControlPoint.
     '''
     result = []
+    previousEndControlPoint = None
     for segmentIndex in self._segmentIndexIter():
       segment = self._createSegmentAt(segmentIndex)
       for controlPoint in segment.controlPointIter():
         result.append(controlPoint)
+      segment.createRelations(relations=self.relations, previousEndAnchor=previousEndControlPoint)
+      previousEndControlPoint = segment.getEndControlPoint()
     return result
   
   
@@ -238,7 +289,68 @@ class PolySegment(QGraphicsPathItem):
     # assert ControlPoints were created and refer to segment
     segment.setIndexInParent(parent=self, indexOfSegmentInParent = segmentIndex)
     return segment
+  
+  
+  def moveRelated(self, controlPoint, deltaCoordinate, alternateMode):
+    ''' Move (translate) controlPoint and set of related controlPoints. '''
+    self._dispatchMoveRelated(controlPoint, deltaCoordinate, alternateMode)
+    # Assert above triggers events to update self
+  
+  
+  def _dispatchMoveRelated(self, controlPoint, deltaCoordinate, alternateMode):
+    ''' 
+    Dispatch: GUI meaning of move depends on role and other conditions.
     
+    IOW, this defines how a drag of a ControlPoint playing a particular Role
+    becomes a translation of a set of ControlPoints.
+    '''
+    # Create visitor function having parameter a ControlPoint instance, with deltaCoordinate fixed
+    visitor = functools.partial(ControlPoint.updateCoordinate, deltaCoordinate=deltaCoordinate)
+    
+    if self.isRoleAnchor(controlPoint):
+      if not alternateMode:
+        # Move all TiedTo Anchor CP's and their Direction CP's: maintain smoothness (colinear)
+        relationWalker.walk(root=controlPoint, 
+                            relations=self.relations, 
+                            relationsToFollow=[TIED_TO, ARM_TO],
+                            visitor = visitor,
+                            maxDepth=2)
+      else:
+        # Move just the TiedTo Anchor CP's: smoothness may change
+        relationWalker.walk(root=controlPoint, 
+                            relations=self.relations, 
+                            relationsToFollow=[TIED_TO],
+                            visitor = visitor,
+                            maxDepth=1)
+        # TODO Calculate new colinear smoothness
+    elif self.isRoleDirection(controlPoint):
+      if not alternateMode:
+        # Move Direction CP independently
+        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[], maxDepth=0)
+      else:
+        # Move Direction CP and its Anchor.  This is probably non-intuitive to users
+        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[ARM_TO], maxDepth=1)
+
+
+  def isRoleAnchor(self, controlPoint):
+    '''
+    Is controlPoint role Anchor?
+    
+    A ControlPoint plays the Anchor role if:
+    - it is ArmTo related (paired with a Direction CP)
+    - AND it is OppositeTo related (paired with an opposite Anchor CP)
+    A ControlPoint playing the Anchor role MAY be TiedTo related (to an Anchor of an adjoining segment)
+    unless it is the starting or ending Anchor of a PolySegment.
+    '''
+    # TEMP when PolySegment has no lines (having no Direction CP's), OPPOSITE_TO is sufficient for Anchor
+    return self.relations.isRelated(instance=controlPoint, relationType=OPPOSITE_TO)
+
+
+  def isRoleDirection(self, controlPoint):
+    return False
+  
+
+
   '''
   TESTING: Reimplement paint() to help see segments.  Not necessary for production use.
   '''

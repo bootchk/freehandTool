@@ -310,15 +310,23 @@ class FreehandTool(object):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
-    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), self._scenePositionFromEvent(event))])
+    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), 
+                                           self._scenePositionFromEvent(event))])
     
   def keyPressEvent(self, event):
     ''' For testing, simulate a GUI that moves ControlPoints. '''
+    # TODO we don't need this on every keyPress, just the first 
     controlPointSet = self.path.getControlPointSet()
+    
+    """
     # delta an arbitrary control point
     controlPointSet[3].updateCoordinate(QPointF(5,5))
+    """
+    
+    self.path.moveRelated(controlPoint=controlPointSet[3], 
+                          deltaCoordinate=QPointF(5,5), 
+                          alternateMode=False)
     # Result should be visible
-  
   
   '''
   Generator filters
@@ -627,7 +635,8 @@ class FreehandTool(object):
     and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    return [LineSegment(self.path.getEndPoint(), cuspPoint), LineSegment(cuspPoint, endPoint)], endPoint
+    return [LineSegment(self.path.getEndPoint(), cuspPoint), 
+            LineSegment(cuspPoint, endPoint)], endPoint
   
   
 

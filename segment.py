@@ -11,10 +11,12 @@ regardless of their curvature (straight or curved.)
 This is a UI design decision.
 '''
 
-
-
 from controlPoint import ControlPoint
-# FIXME from relation import import relations
+
+TIED_TO = 1
+OPPOSITE_TO = 2
+ARM_TO = 3
+
 
 class Segment(object):
   '''
@@ -39,7 +41,7 @@ class Segment(object):
   def __repr__(self):
     return ','.join([str(controlPoint.getCoordinate()) for controlPoint in self.controlPoints])
 
-
+  
   def asPoints(self):
     '''
     Representation as tuple of coordinates of self ControlPoints.
@@ -57,23 +59,24 @@ class Segment(object):
     return self.indexOfSegmentInParent
   
   
-  def createRelations(self, segmentRole):
+  def createRelations(self, relations, previousEndAnchor=None):
     '''
     Set standard relations between control points of a Bezier curve.
     
     Depends on segmentRole (Start, Middle, End)
-    
-    Anchor of one segment TieTo to anchor of next segment.
-    Left anchor ArmTo left direction, similarly for right.
-    Left anchor OppositeTo right anchor.
     '''
-    #relations.relate(self.controlPoints[0], self.controlPoints[1], "TieTo")
-    # WORK IN PROGRESS
-    pass
+    # Left anchor OppositeTo right anchor.
+    relations.relate(self.controlPoints[0], self.controlPoints[3], OPPOSITE_TO)
+    # Left anchor ArmTo left direction, similarly for right.
+    relations.relate(self.controlPoints[0], self.controlPoints[1], ARM_TO)
+    relations.relate(self.controlPoints[2], self.controlPoints[3], ARM_TO)
+    # Anchor of previous segment (if any) TiedTo to anchor of next segment.
+    relations.relate(self.controlPoints[0], previousEndAnchor, TIED_TO)
     
-  def getEndPoint(self):
-    ''' Self end point is self last ControlPoint. '''
-    return self.controlPoints[3].getCoordinate()
+    
+  def getEndControlPoint(self):
+    ''' End point is last ControlPoint. '''
+    return self.controlPoints[-1]
   
   def controlPointChanged(self, controlPointIndex):
     ''' 
@@ -83,6 +86,7 @@ class Segment(object):
     self.parent.segmentChanged(segment=self, indexOfSegmentInParent=self.indexOfSegmentInParent)
     
   def controlPointIter(self):
+    ''' Iterate control points in a canonical order: start,..., end '''
     for i in range(0,4):
       yield self.controlPoints[i]
   
