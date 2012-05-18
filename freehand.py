@@ -173,7 +173,7 @@ import sys
 import traceback
 
 # !!! QTime for timing of cusps
-from PySide.QtCore import QLineF, QPointF, QTime
+from PySide.QtCore import QLineF, QPointF, QTime, Qt
 # !!! Otherwise, no dependence on Qt graphics
 
 from polySegment import PolySegment, GraphicsLine
@@ -311,21 +311,25 @@ class FreehandTool(object):
     but that might leave end of PointerTrack one pixel off.
     '''
     self.path.appendSegments( [LineSegment(self.path.getEndPoint(), 
-                                           self._scenePositionFromEvent(event))])
+                                           self._scenePositionFromEvent(event))],
+                             segmentCuspness=[False])
     
   def keyPressEvent(self, event):
     ''' For testing, simulate a GUI that moves ControlPoints. '''
-    # TODO we don't need this on every keyPress, just the first 
+    # TODO: we don't need this on every keyPress, just the first 
     controlPointSet = self.path.getControlPointSet()
     
-    """
     # delta an arbitrary control point
-    controlPointSet[3].updateCoordinate(QPointF(5,5))
-    """
-    
-    self.path.moveRelated(controlPoint=controlPointSet[3], 
+
+    if event.modifiers() & Qt.ControlModifier:
+      alternateMode = True
+    else:
+      alternateMode = False
+    print alternateMode
+    # 7 is the end anchor of second segment
+    self.path.moveRelated(controlPoint=controlPointSet[7], 
                           deltaCoordinate=QPointF(5,5), 
-                          alternateMode=False)
+                          alternateMode=alternateMode)
     # Result should be visible
   
   '''
@@ -428,16 +432,16 @@ class FreehandTool(object):
         line, isLineForced = (yield)
         if isLineForced:
           ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
-          segments, pathEndPoint = self.segmentsFromLineMidToEnd(previousLine, line)
+          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(previousLine, line)
           previousLine = nullLine(pathEndPoint) # !!! next element from midpoint of nullLine
         else:
           ''' Fit to path, possibly a cusp. '''
-          segments, pathEndPoint = self.segmentsFromLineMidToMid(previousLine, line)  
+          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToMid(previousLine, line)  
           # segments = nullcurveFromLines(previousLine, line) # TEST
           previousLine = line  # Roll forward
         
         # Add results to PointerTrack.
-        self.path.appendSegments(segments) # add segment to existing path
+        self.path.appendSegments(segments, segmentCuspness=cuspness) # add segment to existing path
         
         self.pathTailGhost.updateStart(pathEndPoint)  # Update ghost to start at end of PointerTrack
        
@@ -607,18 +611,25 @@ class FreehandTool(object):
                             controlPoint1=self.interval(0.5+0.5*alpha, point1, point2), 
                             controlPoint2=self.interval(0.5+0.5*alpha, point3, point2), 
                             endPoint=midpoint2)], 
-              midpoint2)
+              midpoint2,
+              [False])  # Not a cusp
       
 
   def segmentsFromLineMidToEnd(self, line1, line2):
     '''
     Return sequence (two or three) of segments that fit midpoint of first PathLine to end of second PathLine.
+    
+    At least the last segment is a cusp.
+    
+    Cases for results:
+    - [line, line, line], cuspness = [True, False, True]
+    - [curve, line], cuspness = [False, True]
     '''
-    midToMidsegments, endOfMidToMid = self.segmentsFromLineMidToMid(line1, line2)
+    midToMidsegments, endOfMidToMid, cuspness = self.segmentsFromLineMidToMid(line1, line2)
     finalEndPoint = line2.p2()
     print "Mid to end"
     midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
-    return midToMidsegments + [midToEnd], finalEndPoint
+    return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
 
 
 
@@ -636,7 +647,7 @@ class FreehandTool(object):
     '''
     print "cusp <<<"
     return [LineSegment(self.path.getEndPoint(), cuspPoint), 
-            LineSegment(cuspPoint, endPoint)], endPoint
+            LineSegment(cuspPoint, endPoint)], endPoint, [True, False]  # First segment is cusp
   
   
 

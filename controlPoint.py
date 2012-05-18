@@ -21,7 +21,7 @@ class ControlPoint(object):
   The types are:
   - Anchor (ends of cubic curves)
   - Direction (ends of control arms)
-  - Center TODO
+  - Center (arcs)
   - End (ends of lines)
   '''
   

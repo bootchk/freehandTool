@@ -27,7 +27,7 @@ class Segment(object):
   - know index in parent
   - create ControlPoints and Relations between them (on instantiation)
   - know relations between ControlPoints
-  - know endPoint
+  - know endPoint and whether a ControlPoint is that endPoint
   - relay controlPointChanged
   '''
   
@@ -78,6 +78,10 @@ class Segment(object):
     ''' End point is last ControlPoint. '''
     return self.controlPoints[-1]
   
+  def isLastAnchor(self, controlPoint):
+    return self.getEndControlPoint() is controlPoint
+  
+  
   def controlPointChanged(self, controlPointIndex):
     ''' 
     Event: a control point has changed. 
@@ -115,7 +119,7 @@ class LineSegment(Segment):
     self.controlPoints[2].setCoordinate(midpoint)
 
   def interpolatePoints(self, startPoint, endPoint):
-    # TODO this should be in a vector library
+    # TODO: this should be in a vector library
     return startPoint + (endPoint - startPoint) / 2
 
 

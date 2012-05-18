@@ -1,7 +1,18 @@
 
 '''
 PolySegment, a connected sequence of Segments.
+
+TODO: rename SegmentString
+
 AKA a polyline, multiline, polycurve, etc.
+
+Meaning of Segment and String
+======
+String: end point of one segment is coincident with start point of next segment.
+Segment: abstraction of line, arc, curve.  Segments differ in their count of ControlPoints: 2, 3, 4, ...
+
+See Shapely and GEOS.  There, segments are only lines or arcs (LineStrings or CurveStrings.) 
+Here, segments can be cubic splines.
 
 Displayable
 ===========
@@ -13,27 +24,35 @@ Lifetimes
 =========
 PolySegment instances are created by freehandTool when user draws, or when unserialized.
 References to them are kept in the scene.
-PolySegment instances are serialized in a different format (say SVG.)
+PolySegment instances are serialized in a different format (say SVG),
+than is modeled here.
 
 ControlPointSets, ControlPoints, Segments, Relations instances 
 are created when a PolySegment is an operand of an editor,
 when the editor calls PolySegment.getControlPoints(),
 and usually the editor makes those ControlPoints visible via Displayable controls.
 PolySegment does not actually store Segment instances.
-IOW, a user using an editor manipulates ControlPoints,
+A user using an editor manipulates ControlPoints,
 which propagates changes to Segments to PolySegments.
 See notes below.
+
+FIXME:
+======
+
+Using indexes into QPainterPath as ID of Segment instances is fragile.
+It currently depends on all segments being the same type having the same count of elements in QPP.
 '''
-import functools
+
 
 from PySide.QtGui import QGraphicsLineItem, QGraphicsPathItem, QPainterPath
 # Qt constants only needed for testing with colored segments
 from PySide.QtCore import QPointF, Qt
 
-from controlPoint import ControlPoint
-from segment import CurveSegment, ARM_TO, TIED_TO, OPPOSITE_TO
+
+from segment import CurveSegment
 from relations import Relations
-from relationWalker import relationWalker
+from segmentActions import segmentStringActions
+from cuspness import Cuspness
 
 
 class GraphicsLine(QGraphicsLineItem):
@@ -59,11 +78,12 @@ class PolySegment(QGraphicsPathItem):
   so they are moved by changing their control points.
   
   Responsibilities:
-  - maintain structure (add segment, update segment, delete(FIXME))
-  - know endPoint, startPoint, countSegments
-  - get ControlPointSet (so user can manipulate them.)
-  - understand relations between ControlPoints in ControlPointSet
-  - understand meaning of user moving control points
+  1. know endPoint, startPoint, countSegments
+  2. maintain structure (add segment, update segment, delete(FIXME))
+  3. get ControlPointSet (so user can manipulate them.)
+  4. maintain relations between ControlPoints in ControlPointSet
+  5. move control points
+  6. maintain cusps and return cuspness of a segment
   
   Specific to Qt GUI toolkit.
   
@@ -95,26 +115,30 @@ class PolySegment(QGraphicsPathItem):
   - OppositeTo: is a Anchor CP paired with Anchor CP at opposite end of segment
   - ArmTo: is a CP of an arm between a Direction CP and an Anchor CP
   
-  A ControlPoint plays the Anchor role if:
-  - it is ArmTo related (paired with a Direction CP)
-  - AND it is OppositeTo related (paired with an opposite Anchor CP)
-  A ControlPoint playing the Anchor role MAY be TiedTo related (to an Anchor of an adjoining segment)
-  unless it is the starting or ending Anchor of a PolySegment.
-  
-  A ControlPoint plays the Direction role if:
-  - it is ArmTo related 
-  - AND has no other relations
-  
   We do it this way for flexibility of design:
   the relations form a network or graph that helps define the behavior when user drags ControlPoints.
   A drag behavior is defined by a traversal method (specialization of walk()) of the relations network.
+  
+  Cusps
+  =====
+  
+  Cusp-ness is a property between two segments.
+  EG two curves form a cusp if their Anchor-Direction arms are NOT colinear.
+  It is dynamic, changing as a user moves ControlPoints and thus Segments.
+  When segments are added, their cuspness can be declared (but it is not checked.)
+  When segments change, cuspness is checked.
+  Cuspness is not stored in most serialized formats like SVG.
+  Cuspness supports user friendly GUI: cusp points move differently.
   '''
+  
   ELEMENTS_PER_SEGMENT = 3
   
   def __init__(self, startingPoint):
     super(PolySegment, self).__init__()
     self.setPath(QPainterPath(startingPoint))
-    self.relations=Relations()
+    self.relations = Relations()
+    self.actions = segmentStringActions
+    self.cuspness = Cuspness()
 
   """
   @classmethod
@@ -131,6 +155,9 @@ class PolySegment(QGraphicsPathItem):
   
   # Inherits path()
 
+  '''
+  Responsibility: 1. know end points.
+  '''
 
   def getEndPoint(self):
     ''' 
@@ -157,9 +184,16 @@ class PolySegment(QGraphicsPathItem):
     return QPointF(element.x, element.y)
   
   
-  def appendSegments(self, segments):
+  
+  '''
+  Responsibililty: 2. maintain structure.
+  '''
+  
+  def appendSegments(self, segments, segmentCuspness):
     ''' 
     Append segments sequentially to end of self. 
+    
+    cuspness is [Bool,] equal in length to segments and tells whether each segment is a cusp.
     
     !!! The QPainterPath instance returned by QGraphicsPathItem.path() is a copy
     and when appended to does not change the display.
@@ -171,9 +205,14 @@ class PolySegment(QGraphicsPathItem):
     
     # copy current path
     pathCopy = self.path()
+    segmentOrdinal = 0
     for segment in segments:
-      #segment.setIndexInParent(parent=self, indexOfSegmentInParent=pathCopy.elementCount())
+      indexOfSegmentInParent=pathCopy.elementCount()
       self._appendSegmentToPath(segment, pathCopy)
+      if segmentCuspness[segmentOrdinal]:
+        self.cuspness.setCuspness(indexOfSegmentInParent)
+      segmentOrdinal += 1
+      
     # !!! pathCopy is NOT an alias for self.path() now, they differ.  Hence:
     self.setPath(pathCopy)
     # No need to invalidate or update display, at least for Qt
@@ -251,6 +290,12 @@ class PolySegment(QGraphicsPathItem):
     return result
     
     
+    
+  '''
+  Responsibility: 
+  3. Get getControlPointSet so user can manipulate them
+  4. maintain relations between ControlPoints in ControlPointSet
+  '''
   def getControlPointSet(self):
     '''
     Instantiate for self:
@@ -259,6 +304,7 @@ class PolySegment(QGraphicsPathItem):
     - Relations (among ControlPoints)
     Returns list of ControlPoint.
     '''
+    self.relations.clear()
     result = []
     previousEndControlPoint = None
     for segmentIndex in self._segmentIndexIter():
@@ -291,64 +337,23 @@ class PolySegment(QGraphicsPathItem):
     return segment
   
   
+  '''
+  Responsibility:  5. move control points
+  '''
+  
   def moveRelated(self, controlPoint, deltaCoordinate, alternateMode):
     ''' Move (translate) controlPoint and set of related controlPoints. '''
-    self._dispatchMoveRelated(controlPoint, deltaCoordinate, alternateMode)
-    # Assert above triggers events to update self
+    # delegate to strategy/policy
+    self.actions.moveRelated(self.relations, controlPoint, deltaCoordinate, alternateMode)
   
   
-  def _dispatchMoveRelated(self, controlPoint, deltaCoordinate, alternateMode):
-    ''' 
-    Dispatch: GUI meaning of move depends on role and other conditions.
+  '''
+  6. maintain cusps and return cuspness of a segment
+  '''
+  def isSegmentCusp(self, segmentIndex):
+    # 
+    return  self.cuspness.isCusp(segmentIndex)
     
-    IOW, this defines how a drag of a ControlPoint playing a particular Role
-    becomes a translation of a set of ControlPoints.
-    '''
-    # Create visitor function having parameter a ControlPoint instance, with deltaCoordinate fixed
-    visitor = functools.partial(ControlPoint.updateCoordinate, deltaCoordinate=deltaCoordinate)
-    
-    if self.isRoleAnchor(controlPoint):
-      if not alternateMode:
-        # Move all TiedTo Anchor CP's and their Direction CP's: maintain smoothness (colinear)
-        relationWalker.walk(root=controlPoint, 
-                            relations=self.relations, 
-                            relationsToFollow=[TIED_TO, ARM_TO],
-                            visitor = visitor,
-                            maxDepth=2)
-      else:
-        # Move just the TiedTo Anchor CP's: smoothness may change
-        relationWalker.walk(root=controlPoint, 
-                            relations=self.relations, 
-                            relationsToFollow=[TIED_TO],
-                            visitor = visitor,
-                            maxDepth=1)
-        # TODO Calculate new colinear smoothness
-    elif self.isRoleDirection(controlPoint):
-      if not alternateMode:
-        # Move Direction CP independently
-        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[], maxDepth=0)
-      else:
-        # Move Direction CP and its Anchor.  This is probably non-intuitive to users
-        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[ARM_TO], maxDepth=1)
-
-
-  def isRoleAnchor(self, controlPoint):
-    '''
-    Is controlPoint role Anchor?
-    
-    A ControlPoint plays the Anchor role if:
-    - it is ArmTo related (paired with a Direction CP)
-    - AND it is OppositeTo related (paired with an opposite Anchor CP)
-    A ControlPoint playing the Anchor role MAY be TiedTo related (to an Anchor of an adjoining segment)
-    unless it is the starting or ending Anchor of a PolySegment.
-    '''
-    # TEMP when PolySegment has no lines (having no Direction CP's), OPPOSITE_TO is sufficient for Anchor
-    return self.relations.isRelated(instance=controlPoint, relationType=OPPOSITE_TO)
-
-
-  def isRoleDirection(self, controlPoint):
-    return False
-  
 
 
   '''
@@ -385,6 +390,7 @@ class PolySegment(QGraphicsPathItem):
           print "unhandled path element", element.type
           i+=1
           """
+          TODO: if PolySegments contain lines (w/o Direction ControlPoints)
           !!! We don't use QPathElements of type Line
           elif element.isLineTo():
             newEnd = QPointF(element.x, element.y)
