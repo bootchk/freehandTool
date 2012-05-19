@@ -1,4 +1,7 @@
 '''
+Copyright 2012 Lloyd Konneker
+
+This is free software, covered by the GNU General Public License.
 '''
 
 
@@ -40,13 +43,19 @@ class Relations(object):
     
     
   def getRelatedInstance(self, instance, relationType ):
-    ''' Get instance related to given instance by relationType. '''
-    return self.relations[instance][relationType]
+    ''' Get instance related to given instance by relationType or None. '''
+    try:
+      return self.relations[instance][relationType]
+    except KeyError:
+      return None
   
   
   def isRelated(self, instance, relationType):
     return relationType in self.relations[instance]
-    
+  
+  def isSolelyRelated(self, instance, relationType):
+    return relationType in self.relations[instance] \
+      and len(self.relations[instance]) == 1
     
   def clear(self):
     del self.relations

@@ -1,5 +1,9 @@
 
+'''
+Copyright 2012 Lloyd Konneker
 
+This is free software, covered by the GNU General Public License.
+'''
 
 
 
@@ -17,7 +21,7 @@ class ControlPoint(object):
   - know whether it has been traversed
   - know its parent Segment and index in same
   
-  A ControlPoint does NOT know its type.  (See PolySegment)
+  A ControlPoint does NOT know its type.  (See SegmentString)
   The types are:
   - Anchor (ends of cubic curves)
   - Direction (ends of control arms)
@@ -52,7 +56,8 @@ class ControlPoint(object):
   def getTraversed(self):
     return self.isTraversed
   
-  def setTraversed(self):
-    self.isTraversed = True
+  def setTraversed(self, value):
+    self.isTraversed = value
+  
   
 

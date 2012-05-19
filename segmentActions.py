@@ -1,3 +1,9 @@
+'''
+Copyright 2012 Lloyd Konneker
+
+This is free software, covered by the GNU General Public License.
+'''
+
 
 import functools
 
@@ -8,98 +14,108 @@ from relationWalker import relationWalker
 
 class SegmentActions(object):
   '''
-  Algorithms acting on ControlPoints of a SegmentString.
+  GUI actions on ControlPoints of a SegmentString.
   
-  Currently, only one algorithm for a GUI where SegmentStrings are only cubic curves,
+  Currently, only actions for a GUI where SegmentStrings are only cubic curves,
   and where:
-  - the only action is moving 
-  - moving a ControlPoint maintains smoothness depending on role of ControlPoint and pre-existence of smoothness.
+  - the only action is translating (not deleting ControlPoints NOR expanding or rotating direction arms.)
+  - moving a ControlPoint maintains cuspness depending on role of ControlPoint and pre-existence of cuspness.
   
   FIXME: delete actions
   Deleting ControlPoint would mean e.g. simplify curve to arc or straighten curve to line
   
   Pattern: Strategy
   =================
-  FIXME: There could be more than one algorithm, for each GUI design.
+  !!! See singleton at end of file.
+  FIXME: There could be more than one set of actions, for different GUI design.
   IE implement concrete subclasses of abstract SegmentActions.
+  For example, a user preference: use action set from a competing app.
   
-  Here, the caller is a SegmentString, which passes a *Context* which is the relations, etc. between ControlPoints.
+  Here, the Strategy caller is a SegmentString, which passes a *Context* which is the relations, etc. between ControlPoints.
   Does NOT pass a reference to the caller.
-  '''
   
-  
-  '''
-  TODO: if move Direction, clearCuspness
-  This GUI design only allows cuspness to clear.
-  To make cuspness dynamic, need to check for cuspness after move direction point.
+  TODO: 
+  =====
+  As is, when user moves a Direction CP, cuspness is created.
+  To make cuspness dynamic, need to check and possibly restore cuspness (smoothness) after move direction point.
   '''
   
   def moveRelated(self, relations, controlPoint, deltaCoordinate, alternateMode):
+    # assert traversal flags are cleared
     self._dispatchMoveRelated(relations, controlPoint, deltaCoordinate, alternateMode)
     # Assert above triggers events to update SegmentString
   
   
   def _dispatchMoveRelated(self, relations, controlPoint, deltaCoordinate, alternateMode):
     ''' 
-    Dispatch: GUI meaning of move depends on role and other conditions.
+    Dispatch: GUI meaning of move depends on role and other conditions (cuspness.)
     
     IOW, this defines how a drag of a ControlPoint playing a particular Role
     becomes a translation of a set of ControlPoints.
     '''
     # Create visitor function having parameter a ControlPoint instance, with deltaCoordinate fixed
     visitor = functools.partial(ControlPoint.updateCoordinate, deltaCoordinate=deltaCoordinate)
+    
     if self.isRoleAnchorAtCusp(controlPoint):
       if not alternateMode:
-        # default is : make cusps more cuspy or possible take out the cusp
+        # default is : make cusps more cuspy or possibly take out cusp
         print "Moving cusp anchor"
-        self.moveNotMaintainingSmoothness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
+        self.moveAnchorSetNotMaintainingCuspness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
       else:
-        # alternate is weaker: can't remove the cusp, only move it as a three ControlPoint unit
-        self.moveMaintainingSmoothness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
+        # alternate is weaker: don't remove the cusp, only move it as a three ControlPoint unit
+        self.moveAnchorSetMaintainingCuspness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
     elif self.isRoleAnchor(relations, controlPoint):
       # assert is not at cusp
       if not alternateMode:
-        # default is: maintain smoothness
-        self.moveMaintainingSmoothness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
+        # default is: maintain cuspness (smoothness)
+        self.moveAnchorSetMaintainingCuspness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
       else:
         # alternate is stronger: usually make a cusp
-        self.moveNotMaintainingSmoothness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
+        self.moveAnchorSetNotMaintainingCuspness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
     elif self.isRoleDirection(relations, controlPoint):
       if not alternateMode:
-        # Move Direction CP independently
-        # TODO:
-        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[], maxDepth=0)
+        # default is: weak, move just the Direction CP (rotate the arm)
+        self.moveDirectionPointIndependently(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
       else:
-        # Move Direction CP and its Anchor.  This is probably non-intuitive to users.
-        # TODO:
-        relationWalker.walk(root=self, relations=self.relations, relationsToFollow=[ARM_TO], maxDepth=1)
+        # default is strong: move whole side of arm (but not the side of arm on other side of Anchors.)
+        self.moveDirectionArm(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
+
 
   '''
-  Roles
+  Roles of ControlPoints in SegmentString.
   '''
 
   def isRoleAnchorAtCusp(self, controlPoint):
     ''' 
-    Returns whether anchor is at a cusp.
-    Two anchors are at a cusp, but only segments where the anchor is the last (not first)
-    anchor of its segment is identified as a cusp segment.
+    Returns whether controlPoint is Anchor and is at a cusp.
     
     Anchor is at cusp if it is last anchor of cusped segment
     OR first anchor TiedTo anchor with same conditions.
     '''
-    if controlPoint.parentSegment.isLastAnchor(controlPoint):
-      return self._testAnchorCusp(controlPoint)
+    distinguishedAnchor = self.getDistinguishedAnchorOfPair(controlPoint)
+    if distinguishedAnchor is not None:
+      return self._testAnchorCusp(distinguishedAnchor)
     else:
+      return False  # Not Anchor at all
+  
+      
+  def getDistinguishedAnchorOfPair(self, controlPoint):
+    ''' 
+    ControlPoint may be an anchor.  If so, may be two anchors coincident.  
+    Return the distinguished one (which is the end of its segment, not the first.)
+    Return None if not an anchor or is solitary (the first Anchor of the first segment.)
+    '''
+    if controlPoint.parentSegment.isLastAnchor(controlPoint):
+      return controlPoint
+    else: # not an anchor or first anchor
       segmentString = controlPoint.parentSegment.parent
       # Only the SegmentString knows TiedTo relation between Anchors of different segments
-      tiedToAnchor = segmentString.relations.getRelatedInstance(controlPoint, "TiedTo")
-      if tiedToAnchor is not None:
-        return self._testAnchorCusp(tiedToAnchor)
-      else: # controlPoint must be an end Anchor of SegmentString, or is not an Anchor
-        return False
-      
+      return segmentString.relations.getRelatedInstance(controlPoint, TIED_TO)
+    # assert returns last Anchor or None
+
 
   def _testAnchorCusp(self, controlPoint):
+    ''' Is this distinguished Anchor at a Cusp? '''
     # assert controlPoint is Anchor and last in segment
     parentSegment = controlPoint.parentSegment
     segmentString = parentSegment.parent
@@ -115,26 +131,31 @@ class SegmentActions(object):
     - it is ArmTo related (paired with a Direction CP)
     - AND it is OppositeTo related (paired with an opposite Anchor CP)
     A ControlPoint playing the Anchor role MAY be TiedTo related (to an Anchor of an adjoining segment)
-    unless it is the starting or ending Anchor of a PolySegment.
+    unless it is the starting or ending Anchor of a SegmentString (the boundary set of ControlPoints of SegmentString.)
     '''
-    # TEMP when PolySegment has no lines (having no Direction CP's), OPPOSITE_TO is sufficient for Anchor
+    # FIXME: when SegmentString is only curves (no lines having no Direction CP's), OPPOSITE_TO is sufficient for Anchor
     return relations.isRelated(instance=controlPoint, relationType=OPPOSITE_TO)
 
 
-  def isRoleDirection(self, controlPoint):
+  def isRoleDirection(self, relations, controlPoint):
     '''
     A ControlPoint plays the Direction role if:
       - it is ArmTo related 
       - AND has no other relation
     '''
-    return False
+    return relations.isSolelyRelated(instance=controlPoint, relationType=ARM_TO)
+  
+  
   
   '''
   Movements
+  
+  Interpret drag of ControlPoint to translations of set of related ControlPoints.
   '''
-  def moveMaintainingSmoothness(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
+  
+  def moveAnchorSetMaintainingCuspness(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
     '''
-    Move all TiedTo Anchor CP's and their Direction CP's: maintain smoothness (colinear) or lack thereof (cuspness.)
+    Move all TiedTo Anchor CP's and their Direction CP's: maintain cuspness or lack thereof (smoothness.)
     '''
     relationWalker.walk(root=controlPoint, 
                         relations=relations, 
@@ -143,18 +164,51 @@ class SegmentActions(object):
                         maxDepth=2)
   
   
-  def moveNotMaintainingSmoothness(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
-    '''
-    Move just the TiedTo Anchor CP's: smoothness may change
-    '''
+  def moveAnchorSetNotMaintainingCuspness(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
+    ''' Move just the TiedTo Anchor CP's: cuspness may change. '''
     relationWalker.walk(root=controlPoint,
                         relations=relations, 
                         relationsToFollow=[TIED_TO],
                         visitor = visitor,
                         maxDepth=1)
-    # TODO: Calculate new colinear smoothness
+    self.updateAnchorCuspness(controlPoint)
     
     
+  def moveDirectionPointIndependently(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
+    '''Move just a Direction CP. '''
+    relationWalker.walk(root=controlPoint,
+                      relations=relations, 
+                      relationsToFollow=[],
+                      visitor = visitor,
+                      maxDepth=0)
+    self.updateDirectionCuspness(relations, controlPoint)
+  
+  
+  def moveDirectionArm(self, relations, controlPoint, deltaCoordinate, alternateMode, visitor):
+    '''Move a Direction CP and its Anchor CP. '''
+    relationWalker.walk(root=controlPoint,
+                      relations=relations, 
+                      relationsToFollow=[ARM_TO],
+                      visitor = visitor,
+                      maxDepth=1)
+    self.updateDirectionCuspness(relations, controlPoint)
+  
+  
+  def updateDirectionCuspness(self, relations, controlPoint):
+    ''' Direction CP moved: Calculate new colinear cuspness. '''
+    anchor = relations.getRelatedInstance(controlPoint, ARM_TO)
+    self.updateAnchorCuspness(anchor)
+  
+  def updateAnchorCuspness(self, controlPoint):
+    ''' Anchor CP moved: Calculate new colinear cuspness. '''
+    # TODO: for now, always make cusp.  Should calculate.
+    distinguishedAnchor = self.getDistinguishedAnchorOfPair(controlPoint)
+    if distinguishedAnchor is not None:
+      segment = distinguishedAnchor.parentSegment
+      segmentString = segment.parent
+      segmentIndex = segment.getIndexInParent()
+      segmentString.setSegmentCuspness(segmentIndex)
+      
     
 # Singleton
 segmentStringActions = SegmentActions()

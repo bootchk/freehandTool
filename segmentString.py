@@ -1,46 +1,51 @@
-
 '''
-PolySegment, a connected sequence of Segments.
+Copyright 2012 Lloyd Konneker
 
-TODO: rename SegmentString
+This is free software, covered by the GNU General Public License.
+
+
+
+SegmentString, a connected sequence of Segments.
 
 AKA a polyline, multiline, polycurve, etc.
 
 Meaning of Segment and String
 ======
 String: end point of one segment is coincident with start point of next segment.
-Segment: abstraction of line, arc, curve.  Segments differ in their count of ControlPoints: 2, 3, 4, ...
+Segment: abstraction of line, arc, curve (which differ in their count of ControlPoints: 2, 3, 4, ...)
 
-See Shapely and GEOS.  There, segments are only lines or arcs (LineStrings or CurveStrings.) 
-Here, segments can be cubic splines.
+See Shapely and GEOS, where segments are only lines or arcs (LineStrings or CurveStrings.) 
+Here, segments are only cubic splines.
 
 Displayable
 ===========
-Only a PolySegment is a Displayable/Composeable 
+Only a SegmentString is a Displayable/Composeable 
 (see Designing Object Oriented Software by Wirfs-Brock.)
 Segments and ControlPoints are models, not view/controllers.
 
 Lifetimes
 =========
-PolySegment instances are created by freehandTool when user draws, or when unserialized.
-References to them are kept in the scene.
-PolySegment instances are serialized in a different format (say SVG),
-than is modeled here.
+SegmentString instances are created by freehandTool when user draws, or when unserialized.
+References to them are kept in a scene.
+SegmentString instances are serialized in a different format (say SVG), than is modeled here.
 
 ControlPointSets, ControlPoints, Segments, Relations instances 
-are created when a PolySegment is an operand of an editor,
-when the editor calls PolySegment.getControlPoints(),
+are created when a SegmentString is an operand of an Editor,
+when the editor calls SegmentString.getControlPoints(),
 and usually the editor makes those ControlPoints visible via Displayable controls.
-PolySegment does not actually store Segment instances.
-A user using an editor manipulates ControlPoints,
-which propagates changes to Segments to PolySegments.
+SegmentString does not store Segment instances.
+A user using an editor manipulates ControlPoints, which propagates changes to Segments to SegmentStrings.
 See notes below.
+
+Cuspness is populated as a SegmentString is created.
 
 FIXME:
 ======
 
 Using indexes into QPainterPath as ID of Segment instances is fragile.
 It currently depends on all segments being the same type having the same count of elements in QPP.
+
+Cuspness deserialized.
 '''
 
 
@@ -59,7 +64,7 @@ class GraphicsLine(QGraphicsLineItem):
   '''
   GraphicsItem that is a line.
   
-  Used for ghosting line in freehandDrawing
+  Used for ghosting the trailing end while freehandDrawing.
   Initially a zero length line at (0,0).
   Implemented as QGraphicsLineItem.
   
@@ -68,7 +73,7 @@ class GraphicsLine(QGraphicsLineItem):
   pass
   
   
-class PolySegment(QGraphicsPathItem):
+class SegmentString(QGraphicsPathItem):
   '''
   GraphicsItem that is a sequence of Segments.
   
@@ -134,23 +139,15 @@ class PolySegment(QGraphicsPathItem):
   ELEMENTS_PER_SEGMENT = 3
   
   def __init__(self, startingPoint):
-    super(PolySegment, self).__init__()
+    super(SegmentString, self).__init__()
     self.setPath(QPainterPath(startingPoint))
-    self.relations = Relations()
-    self.actions = segmentStringActions
-    self.cuspness = Cuspness()
-
-  """
-  @classmethod
-  def determineControlPointRole(cls, instance):
-    ''' 
-    Return role of ControlPoint instance.
+    self.actions = segmentStringActions # singleton
     
-    Role depends on relations and colinearity.
-    '''
-    # if colinear etc.
-    return "Anchor"
-  """
+    # The following are not necessarily serialized, but usually reconstructable upon deserialize.
+    # They are only needed when GUI is displaying ControlPoints as Controls
+    self.relations = Relations()
+    self.cuspness = Cuspness()
+    self.controlPointSet = None
   
   
   # Inherits path()
@@ -161,7 +158,7 @@ class PolySegment(QGraphicsPathItem):
 
   def getEndPoint(self):
     ''' 
-    End point of a PolySegment is:
+    End point of a SegmentString is:
     - coordinates of its last element
     - OR startingPoint if has no Segments
     '''
@@ -169,7 +166,7 @@ class PolySegment(QGraphicsPathItem):
   
   def getStartPoint(self):
     ''' 
-    Start point of a PolySegment is:
+    Start point of a SegmentString is:
     - first element, regardless if has any Segments
     '''
     return self._pointForPathElement(element = self.path().elementAt(0))
@@ -253,7 +250,7 @@ class PolySegment(QGraphicsPathItem):
         self._appendSegmentToPath(segment, newPath)
       else:
         self._copySegmentPathToPath(sourcePath=self.path(), destinationPath=newPath, segmentIndex=segmentIndex)
-    # Assert PolySegment.getEndPoint is correct even case last segment updated
+    # Assert SegmentString.getEndPoint is correct even case last segment updated
     self.setPath(newPath)
         
       
@@ -268,11 +265,11 @@ class PolySegment(QGraphicsPathItem):
     !!! Relies on all segments represented as 3-tuple curves.
     '''
     for i in range(0, self.segmentCount()):
-      yield i * PolySegment.ELEMENTS_PER_SEGMENT + 1
+      yield i * SegmentString.ELEMENTS_PER_SEGMENT + 1
   
   
   def segmentCount(self):
-    return self.path().elementCount()/PolySegment.ELEMENTS_PER_SEGMENT
+    return self.path().elementCount()/SegmentString.ELEMENTS_PER_SEGMENT
   
   def _copySegmentPathToPath(self, sourcePath, destinationPath, segmentIndex):
     ''' Use elements of a segment from sourcePath to append a segment to destinationPath. '''
@@ -285,7 +282,7 @@ class PolySegment(QGraphicsPathItem):
     !!! This is a 3-tuple, not sufficient for creating Segment
     '''
     result = []
-    for i in range(0, PolySegment.ELEMENTS_PER_SEGMENT):
+    for i in range(0, SegmentString.ELEMENTS_PER_SEGMENT):
       result.append(self._pointForPathElement(element = path.elementAt(segmentIndex + i)))
     return result
     
@@ -304,6 +301,7 @@ class PolySegment(QGraphicsPathItem):
     - Relations (among ControlPoints)
     Returns list of ControlPoint.
     '''
+    # NOT assert self.controlPointSet is None
     self.relations.clear()
     result = []
     previousEndControlPoint = None
@@ -313,6 +311,8 @@ class PolySegment(QGraphicsPathItem):
         result.append(controlPoint)
       segment.createRelations(relations=self.relations, previousEndAnchor=previousEndControlPoint)
       previousEndControlPoint = segment.getEndControlPoint()
+    self.controlPointSet = result # Remember my own ControlPoint set
+    # FIXME: above does NOT allow for many views of same SegmentString
     return result
   
   
@@ -329,12 +329,18 @@ class PolySegment(QGraphicsPathItem):
       startPoint = self.getStartPoint()
     else:
       # Last point of previous segment is first point of this segment
-      startPoint = self._pointsInPathForSegment(self.path(), segmentIndex - PolySegment.ELEMENTS_PER_SEGMENT)[-1]
+      startPoint = self._pointsInPathForSegment(self.path(), segmentIndex - SegmentString.ELEMENTS_PER_SEGMENT)[-1]
     pointsFromPath = self._pointsInPathForSegment(self.path(), segmentIndex)
     segment = CurveSegment(startPoint, *pointsFromPath)
     # assert ControlPoints were created and refer to segment
     segment.setIndexInParent(parent=self, indexOfSegmentInParent = segmentIndex)
     return segment
+  
+  
+  def clearTraversal(self):
+    ''' Clear traversal flags to prepare for new traversal. '''
+    for controlPoint in self.controlPointSet:
+      controlPoint.setTraversed(False)
   
   
   '''
@@ -343,6 +349,7 @@ class PolySegment(QGraphicsPathItem):
   
   def moveRelated(self, controlPoint, deltaCoordinate, alternateMode):
     ''' Move (translate) controlPoint and set of related controlPoints. '''
+    self.clearTraversal() # movement by traversal of relations
     # delegate to strategy/policy
     self.actions.moveRelated(self.relations, controlPoint, deltaCoordinate, alternateMode)
   
@@ -351,9 +358,10 @@ class PolySegment(QGraphicsPathItem):
   6. maintain cusps and return cuspness of a segment
   '''
   def isSegmentCusp(self, segmentIndex):
-    # 
-    return  self.cuspness.isCusp(segmentIndex)
+    return self.cuspness.isCusp(segmentIndex)
     
+  def setSegmentCuspness(self, segmentIndex):
+    self.cuspness.setCuspness(segmentIndex)
 
 
   '''
@@ -390,7 +398,7 @@ class PolySegment(QGraphicsPathItem):
           print "unhandled path element", element.type
           i+=1
           """
-          TODO: if PolySegments contain lines (w/o Direction ControlPoints)
+          TODO: if SegmentStringss contain lines (w/o Direction ControlPoints)
           !!! We don't use QPathElements of type Line
           elif element.isLineTo():
             newEnd = QPointF(element.x, element.y)

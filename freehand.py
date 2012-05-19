@@ -176,7 +176,7 @@ import traceback
 from PySide.QtCore import QLineF, QPointF, QTime, Qt
 # !!! Otherwise, no dependence on Qt graphics
 
-from polySegment import PolySegment, GraphicsLine
+from segmentString import SegmentString, GraphicsLine
 from segment import LineSegment, CurveSegment
 
 
@@ -292,7 +292,7 @@ class FreehandTool(object):
     
     startPosition = self._scenePositionFromEvent(event)
     # Create contiguous PointerTrack in a new single QGraphicPathItem
-    self.path = PolySegment(startingPoint=startPosition)
+    self.path = SegmentString(startingPoint=startPosition)
     self.scene.addItem(self.path)     # Display pointerTrack
     self.pathTailGhost.showAt(startPosition)
     
@@ -325,9 +325,10 @@ class FreehandTool(object):
       alternateMode = True
     else:
       alternateMode = False
-    print alternateMode
+    # 8 start anchor of second segment
+    # 6 is Direction CP of second seg
     # 7 is the end anchor of second segment
-    self.path.moveRelated(controlPoint=controlPointSet[7], 
+    self.path.moveRelated(controlPoint=controlPointSet[8], 
                           deltaCoordinate=QPointF(5,5), 
                           alternateMode=alternateMode)
     # Result should be visible
@@ -606,7 +607,7 @@ class FreehandTool(object):
       as second control point for previous spline,
       said control points are colinear and joint between consecutive splines is smooth.
       '''
-      print "mid to mid curve"
+      #print "mid to mid curve"
       return ([CurveSegment(startPoint=midpoint1,
                             controlPoint1=self.interval(0.5+0.5*alpha, point1, point2), 
                             controlPoint2=self.interval(0.5+0.5*alpha, point3, point2), 

@@ -1,4 +1,8 @@
+'''
+Copyright 2012 Lloyd Konneker
 
+This is free software, covered by the GNU General Public License.
+'''
 
 
 class RelationWalker(object):
@@ -15,20 +19,16 @@ class RelationWalker(object):
     - only following relations (types) in relationsToFollow
     - to maxDepth
     '''
-    print "Visit", root
+    #print "Visit", root
     visitor(root)
-    root.setTraversed()
+    root.setTraversed(True)
   
     for relation in relationsToFollow:
-      try:
-        relatedInstance = relations.getRelatedInstance(root, relation)
-        if not relatedInstance.getTraversed():
-          if maxDepth > 0:
-            # Recursion
-            print "Related by", relation
-            self.walk(relatedInstance, relations, relationsToFollow, visitor, maxDepth = maxDepth - 1)
-      except KeyError:
-        pass  # no related instance
+      relatedInstance = relations.getRelatedInstance(root, relation)
+      if relatedInstance is not None and not relatedInstance.getTraversed() and maxDepth > 0:
+        # Recursion
+        #print "Related by", relation
+        self.walk(relatedInstance, relations, relationsToFollow, visitor, maxDepth = maxDepth - 1)
 
 # singleton
 relationWalker = RelationWalker()

@@ -1,3 +1,9 @@
+'''
+Copyright 2012 Lloyd Konneker
+
+This is free software, covered by the GNU General Public License.
+'''
+
 
 class Cuspness(object):
   '''
@@ -5,12 +11,20 @@ class Cuspness(object):
   
   Cuspness is a property between two adjacent segments in a string.
   Cuspness is the opposite of colinear.
-  Ends of a SegmentString are NOT cusps (although the GUI can make them behave the same as cusps.)
+  A synonym is "smoothness", with opposite values, but still meaning the same property.
+  
+  SegmentStrings know cuspness.  Cuspness just caches it.
+  
+  Start and End of a SegmentString are NOT cusps (although the GUI can make them behave the same as cusps.)
   
   NOT a property of a single segment.
-  However, we store cuspness by the index of a segment in a SegmentString.
+  However, cuspness is accessed by the index of a segment in a SegmentString.
   The cuspness property is at the last Anchor ControlPoint of the segment.
-  TODO first?
+  
+  An index need NOT be an ordinal.
+  cuspness[0] is False.
+  cuspness[1] is the cuspness of first segment.
+  Typically cuspness[4] is the cuspness of second segment.
   
   Cuspness CAN be computed on the fly.
   This is a cache, storing cuspness when we know whether is exists at SegmentString creation time.
@@ -20,6 +34,10 @@ class Cuspness(object):
   
   Implementation:
   Every segment is NOT a cusp unless it is in the dictionary.
+  
+  Responsibility:
+  -set, clear, get cuspness for a segment index
+  -compute cuspness from geometry of the direction points at the end of a segment.
   '''
   def __init__(self):
     self.cuspness = {}
@@ -35,5 +53,5 @@ class Cuspness(object):
   
   def computeCuspness(self, index):
     ''' Use geometry to calculate whether is cusp. '''
-    # FIXME:
+    # FIXME: or is this a SegmentString responsibility?
     return False

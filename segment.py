@@ -1,9 +1,14 @@
 '''
+Copyright 2012 Lloyd Konneker
+
+This is free software, covered by the GNU General Public License.
+
+
 FreehandTool understands straight segments and curved segments.
 That is, it wants an API that offers lines and curves.
 These classes give that API.
 
-However, PolySegment represents both lines and curves 
+However, SegmentString represents both lines and curves 
 by the mathematical abstraction *curve* as represented by a cubic spline or Bezier.
 (Although curves for straight lines are created straight.)
 User can subsequently manipulate segments the same way,
@@ -13,6 +18,7 @@ This is a UI design decision.
 
 from controlPoint import ControlPoint
 
+# Relation IDs
 TIED_TO = 1
 OPPOSITE_TO = 2
 ARM_TO = 3
@@ -20,13 +26,13 @@ ARM_TO = 3
 
 class Segment(object):
   '''
-  Base class for segments of a PolySegment.
+  Base class for segments of a SegmentString.
   
   Responsibilities:
   - produce representation as sequence of points
   - know index in parent
   - create ControlPoints and Relations between them (on instantiation)
-  - know relations between ControlPoints
+  - know relations between ControlPoints and order them
   - know endPoint and whether a ControlPoint is that endPoint
   - relay controlPointChanged
   '''

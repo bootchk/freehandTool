@@ -10,9 +10,10 @@
 A freehand drawing tool.
 Input: pointer device (e.g. mouse) events.
 Output: graphic vector path (lines and splines) which a GUI toolkit renders.
-Not a complete app, only a component.
-Includes a rudimentary GUI app for testing.
+Not a complete app, mostly the model component.
+Includes a rudimentary GUI app for testing (draw with LMB, distort with key or Ctl-key)
 Written in pure Python.
+Emphasis on domain objects and class/responsibility/collaboration documentation.
 
 Tags:
 - freehand drawing.
@@ -22,7 +23,9 @@ Tags:
 - pipe of filters.
 - GUI toolkit Qt.
 
-Derived from potrace by Peter Selinger.
+References:
+- Derived from potrace by Peter Selinger.
+- Object model somewhat similar to Shapely/GEOS
 
 See much more technical discussion in the code.
 
@@ -30,15 +33,25 @@ See much more technical discussion in the code.
 2. Version 2.0
 ==============
 
-PolySegment, Segment, ControlPoint classes.
-Explicitly model the abstractions of a polyline.
+SegmentString, Segment, ControlPoint classes.
+Explicitly model the abstractions of a SegmentString.
 This more cleanly separates freehandTool from what it produces.
-Demonstrates editing a PolySegment by manipulation of its ControlPoints.
+Demonstrates editing a SegmentString by manipulation of its ControlPoints.
 (Although editing is not graphical, just crude demo via keystrokes.)
 
 
-3. Plans for Version 3.0
+3. Version 3.0
 ========================
 
-- Relations between ControlPoints defines behavior of manipulations.
+- Relations between ControlPoints defines actions (behavior of user manipulations.)
+- Cusps known by SegmentString 
+- Actions defined as a Strategy/Policy
 - An API that can be cleanly hooked to a GUI editor.
+
+
+4. Serialize/Deserialize
+========================
+TODO
+Calculate cuspness geometrically.
+Cuspness is not currently serializable/deserializable, only exists just after SegmentString creation.
+
