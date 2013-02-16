@@ -14,6 +14,8 @@ from PySide.QtGui import *
 import sys
 
 from freehand import FreehandTool
+from ghostLine import PointerTrackGhost
+
 
 class DiagramScene(QGraphicsScene):
     def __init__(self, *args):
@@ -30,18 +32,29 @@ class GraphicsView(QGraphicsView):
       self.setRenderHint(QPainter.TextAntialiasing)
 
       self.setMouseTracking(True);  # Enable mouseMoveEvent
-      self.freehandTool = FreehandTool(self.scene(), self)
+      
+      
+      self.headGhost = PointerTrackGhost()
+      # self.headGhost.setParentItem(self.scene())  # add to scene
+      self.scene().addItem(self.headGhost)
+      # Freehand tool cooperates with ghost line.
+      self.freehandTool = FreehandTool(self.headGhost)
 
 
 
   ''' Delegate events to FreehandTool. '''
   def mouseMoveEvent(self, event):
     # print "GV mouse moved"
+    ''' Tell freehandTool to update its SegmentString. '''
     self.freehandTool.pointerMoveEvent(position=self._mapEventCoordsToScene(event))
   
   def mousePressEvent(self, event):
-    # print "GV mouse pressed"
-    self.freehandTool.pointerPressEvent(position=self._mapEventCoordsToScene(event))
+    '''
+    On mouse button down, freehandTool creates a new (infinitesmal) SegmentString.
+    freehandTool remembers and updates SegmentString.
+    '''
+    freehandCurve = self.freehandTool.pointerPressEvent(position=self._mapEventCoordsToScene(event))
+    self.scene().addItem(freehandCurve)
     
   def mouseReleaseEvent(self, event):
     self.freehandTool.pointerReleaseEvent(position=self._mapEventCoordsToScene(event))

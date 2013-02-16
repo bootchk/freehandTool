@@ -16,46 +16,36 @@ from PySide.QtCore import QLineF
 
 
 
-class GraphicsLine(QGraphicsLineItem):
-  '''
-  GraphicsItem that is a line.
-  
-  Used for ghosting the trailing end while freehandDrawing.
-  Initially a zero length line at (0,0).
-  Implemented as QGraphicsLineItem.
-  
-  This is an interface, so that freehand.py does not depend on Qt.Gui
-  '''
-  pass
-
-
-class PointerTrackGhost(object):
+class PointerTrackGhost(QGraphicsLineItem):
   '''
   A ghost for freehand drawing.
   Line between current PointerPosition and last PointerTrack path segment generated, which lags.
   Finally replaced by a path segment.
   Hidden when user not using freehand tool.
+  
+  Implementation: extent QGraphicsLineItem
+  
+  This presents a simplified API to FreehandTool,
+  to reduce coupling between FreehandTool and Qt.
   '''
-  def __init__(self, scene):
-    self.lineItem = GraphicsLine()
-    self.lineItem.hide()
+  def __init__(self, **kwargs):
+    super(PointerTrackGhost,self).__init__(**kwargs)
     self.start = None
     self.end = None
-    scene.addItem(self.lineItem)
+    # ensure is hidden, not in scene
   
   def showAt(self, initialPosition):
     self.start = initialPosition
     self.end = initialPosition
-    self.lineItem.setLine(QLineF(self.start, self.end))
-    self.lineItem.show()
+    self.setLine(QLineF(self.start, self.end))
+    self.show()
     
   def updateStart(self, point):
     self.start = point
-    self.lineItem.setLine(QLineF(self.start, self.end))
+    self.setLine(QLineF(self.start, self.end))
     
   def updateEnd(self, point):
     self.end = point
-    self.lineItem.setLine(QLineF(self.start, self.end))
+    self.setLine(QLineF(self.start, self.end))
     
-  def hide(self, point):
-    self.lineItem.hide()
+  # hide() is inherited

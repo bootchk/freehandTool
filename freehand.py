@@ -228,14 +228,11 @@ def nullLine(point):
 
 class FreehandTool(object):
   
-  def __init__(self, scene, view):
+  def __init__(self, ghostHead):
     self.turnGenerator = None # Flag, indicates pipe is generating
     # Ghost ungenerated tail of PointerPath with LinePathElement
-    self.pathTailGhost = PointerTrackGhost(scene)
+    self.pathTailGhost = ghostHead
     self.path = None  # None until start using tool
-    # GUI
-    self.scene = scene
-    self.view = view
     
     
   def initFilterPipe(self, startPosition):
@@ -280,14 +277,19 @@ class FreehandTool(object):
       sys.exit()
   
   def pointerPressEvent(self, position):
-    ''' Start freehand drawing. Init pipe and new graphics item. '''
+    ''' 
+    Start freehand drawing. 
+    Init pipe and new graphics item. 
+    Caller should add graphics item to scene.
+    '''
     self.initFilterPipe(position)
     
     # Create contiguous PointerTrack in a new single QGraphicPathItem
     self.path = SegmentString()
     self.path.setStartPoint(startPoint=position)
-    self.scene.addItem(self.path)     # Display pointerTrack
     self.pathTailGhost.showAt(position)
+    return self.path
+
     
     
   
