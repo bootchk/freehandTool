@@ -262,23 +262,15 @@ class FreehandTool(object):
       self.turnGenerator = None # Flag pipe is closed
       self.lineGenerator.close()
       self.curveGenerator.close()
-  
-  
-  def _scenePositionFromEvent(self, event):
-    ''' Return scene coords mapped from window coords, as a QPointF. '''
-    result = self.view.mapToScene(event.x(), event.y())
-    #print result
-    return result
 
 
-  def pointerMoveEvent(self, event):
+  def pointerMoveEvent(self, position):
     ''' Feed pointerMoveEvent into a pipe. '''
     try:
       # Generate if pointer button down
       if self.turnGenerator is not None:
-        newPosition = self._scenePositionFromEvent(event)
-        self.turnGenerator.send(newPosition)  # Feed pipe
-        self.pathTailGhost.updateEnd(newPosition)
+        self.turnGenerator.send(position)  # Feed pipe
+        self.pathTailGhost.updateEnd(position)
     except StopIteration:
       '''
       While user is moving pointer, we don't expect pipe to stop.
@@ -286,20 +278,19 @@ class FreehandTool(object):
       '''
       sys.exit()
   
-  def pointerPressEvent(self, event):
+  def pointerPressEvent(self, position):
     ''' Start freehand drawing. Init pipe and new graphics item. '''
-    self.initFilterPipe(self._scenePositionFromEvent(event))
+    self.initFilterPipe(position)
     
-    startPosition = self._scenePositionFromEvent(event)
     # Create contiguous PointerTrack in a new single QGraphicPathItem
     self.path = SegmentString()
-    self.path.setStartPoint(startPoint=startPosition)
+    self.path.setStartPoint(startPoint=position)
     self.scene.addItem(self.path)     # Display pointerTrack
-    self.pathTailGhost.showAt(startPosition)
+    self.pathTailGhost.showAt(position)
     
     
   
-  def pointerReleaseEvent(self, event):
+  def pointerReleaseEvent(self, position):
     ''' Stop freehand drawing. '''
     self.closeFilterPipe()
     '''
@@ -312,7 +303,7 @@ class FreehandTool(object):
     but that might leave end of PointerTrack one pixel off.
     '''
     self.path.appendSegments( [LineSegment(self.path.getEndPoint(), 
-                                           self._scenePositionFromEvent(event))],
+                                           position)],
                              segmentCuspness=[False])
     
   def keyPressEvent(self, event):
@@ -403,7 +394,7 @@ class FreehandTool(object):
           # Effectively, eliminate generation lag by generating a LinePathElement.
           forcedLine = self.forceLineFromPath(startTurn, previousTurn, turn, constraints)
           self.curveGenerator.send((forcedLine, True))
-          # self.labelLine("F" + str(positionElapsedTime), turn)
+          ## For debug: self.labelLine("F" + str(positionElapsedTime), turn)
           startTurn = previousTurn  # !!! current turn is part of next PathLine
         # else current path (all turns) still satisfied by a PathLine: wait
           
@@ -707,10 +698,6 @@ class FreehandTool(object):
     return QGraphicsPathItem(path)
   """
    
-  def labelLine(self, string, position):
-    ''' For testing '''
-    text = self.scene.addSimpleText(string)
-    text.setPos(position)
     
 
 
