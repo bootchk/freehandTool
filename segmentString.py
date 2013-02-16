@@ -49,7 +49,7 @@ Cuspness deserialized.
 '''
 
 
-from PySide.QtGui import QGraphicsLineItem, QGraphicsPathItem, QPainterPath
+from PySide.QtGui import QGraphicsPathItem, QPainterPath
 # Qt constants only needed for testing with colored segments
 from PySide.QtCore import QPointF, Qt
 
@@ -60,17 +60,7 @@ from segmentActions import segmentStringActions
 from cuspness import Cuspness
 
 
-class GraphicsLine(QGraphicsLineItem):
-  '''
-  GraphicsItem that is a line.
-  
-  Used for ghosting the trailing end while freehandDrawing.
-  Initially a zero length line at (0,0).
-  Implemented as QGraphicsLineItem.
-  
-  This is an interface, so that freehand.py does not depend on Qt.Gui
-  '''
-  pass
+
   
   
 class SegmentString(QGraphicsPathItem):

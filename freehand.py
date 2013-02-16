@@ -176,7 +176,8 @@ import traceback
 from PySide.QtCore import QLineF, QPointF, QTime, Qt
 # !!! Otherwise, no dependence on Qt graphics
 
-from segmentString import SegmentString, GraphicsLine
+from segmentString import SegmentString
+from ghostLine import PointerTrackGhost
 from segment import LineSegment, CurveSegment
 
 
@@ -774,36 +775,6 @@ class Constraints(object):
       self.constraintRight = offset
 
 
-class PointerTrackGhost(object):
-  '''
-  A ghost for freehand drawing.
-  Line between current PointerPosition and last PointerTrack path segment generated, which lags.
-  Finally replaced by a path segment.
-  Hidden when user not using freehand tool.
-  '''
-  def __init__(self, scene):
-    self.lineItem = GraphicsLine()
-    self.lineItem.hide()
-    self.start = None
-    self.end = None
-    scene.addItem(self.lineItem)
-  
-  def showAt(self, initialPosition):
-    self.start = initialPosition
-    self.end = initialPosition
-    self.lineItem.setLine(QLineF(self.start, self.end))
-    self.lineItem.show()
-    
-  def updateStart(self, point):
-    self.start = point
-    self.lineItem.setLine(QLineF(self.start, self.end))
-    
-  def updateEnd(self, point):
-    self.end = point
-    self.lineItem.setLine(QLineF(self.start, self.end))
-    
-  def hide(self, point):
-    self.lineItem.hide()
 
 
 
