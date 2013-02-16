@@ -15,6 +15,7 @@ import sys
 
 from freehand import FreehandTool
 from ghostLine import PointerTrackGhost
+from segmentString import SegmentString
 
 
 class DiagramScene(QGraphicsScene):
@@ -34,11 +35,9 @@ class GraphicsView(QGraphicsView):
       self.setMouseTracking(True);  # Enable mouseMoveEvent
       
       
-      self.headGhost = PointerTrackGhost()
-      # self.headGhost.setParentItem(self.scene())  # add to scene
-      self.scene().addItem(self.headGhost)
-      # Freehand tool cooperates with ghost line.
-      self.freehandTool = FreehandTool(self.headGhost)
+      
+      
+      self.freehandTool = FreehandTool()
 
 
 
@@ -50,11 +49,19 @@ class GraphicsView(QGraphicsView):
   
   def mousePressEvent(self, event):
     '''
-    On mouse button down, freehandTool creates a new (infinitesmal) SegmentString.
+    On mouse button down, create a new (infinitesmal) SegmentString and PointerTrackGhost.
     freehandTool remembers and updates SegmentString.
     '''
-    freehandCurve = self.freehandTool.pointerPressEvent(position=self._mapEventCoordsToScene(event))
+    freehandCurve = SegmentString()
+    headGhost = PointerTrackGhost()
     self.scene().addItem(freehandCurve)
+    self.scene().addItem(headGhost)
+    scenePosition = self._mapEventCoordsToScene(event)
+    self.freehandTool.setSegmentString(segmentString=freehandCurve, 
+                                       pathHeadGhost=headGhost, 
+                                       position=scenePosition)
+    self.freehandTool.pointerPressEvent(scenePosition)
+
     
   def mouseReleaseEvent(self, event):
     self.freehandTool.pointerReleaseEvent(position=self._mapEventCoordsToScene(event))

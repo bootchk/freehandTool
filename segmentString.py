@@ -48,22 +48,18 @@ It currently depends on all segments being the same type having the same count o
 Cuspness deserialized.
 '''
 
-
 from PySide.QtGui import QGraphicsPathItem, QPainterPath
-# Qt constants only needed for testing with colored segments
-from PySide.QtCore import QPointF, Qt
-
+from PySide.QtCore import QPointF
 
 from segment import CurveSegment
 from relations import Relations
 from segmentActions import segmentStringActions
 from cuspness import Cuspness
-
-
+from alternatePaintingQGPI import AlternateColorPaintingQGPI
 
   
   
-class SegmentString(QGraphicsPathItem):
+class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
   '''
   GraphicsItem that is a sequence of Segments.
   
@@ -361,56 +357,4 @@ class SegmentString(QGraphicsPathItem):
     self.cuspness.setCuspness(segmentIndex)
 
 
-  '''
-  TESTING: Reimplement paint() to help see segments.  Not necessary for production use.
-  '''
-  def paint(self, painter, styleOption, widget):
-    ''' Reimplemented to paint elements in alternating colors '''
-    path = self.path()  # alias
-    pathEnd = None
-    i = 0
-    while True:
-      try:
-        element = path.elementAt(i)
-        # print type(element), element.type
-        if element.isMoveTo():
-          pathEnd = QPointF(element.x, element.y)
-          i+=1
-        elif element.isCurveTo():
-          # Gather curve data, since is spread across elements of type curveElementData
-          cp1 = QPointF(element.x, element.y)
-          element = path.elementAt(i+1)
-          cp2 = QPointF(element.x, element.y)
-          element = path.elementAt(i+2)
-          newEnd = QPointF(element.x, element.y)
-          # create a subpath, since painter has no drawCubic method
-          subpath=QPainterPath()
-          subpath.moveTo(pathEnd)
-          subpath.cubicTo(cp1, cp2, newEnd)
-          painter.drawPath(subpath)
-          
-          pathEnd = newEnd
-          i+=3
-        else:
-          print "unhandled path element", element.type
-          i+=1
-          """
-          TODO: if SegmentStringss contain lines (w/o Direction ControlPoints)
-          !!! We don't use QPathElements of type Line
-          elif element.isLineTo():
-            newEnd = QPointF(element.x, element.y)
-            painter.drawLine(pathEnd, newEnd)
-            pathEnd = newEnd
-            i+=1
-          """
-        if i >= path.elementCount():
-          break
-      except Exception as inst:
-        print inst
-        break
-        
-      # Alternate colors
-      if i%2 == 1:
-        painter.setPen(Qt.blue)
-      else:
-        painter.setPen(Qt.red)
+  

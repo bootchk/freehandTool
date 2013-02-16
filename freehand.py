@@ -177,7 +177,6 @@ from PySide.QtCore import QLineF, QPointF, QTime, Qt
 # !!! Otherwise, no dependence on Qt graphics
 
 from segmentString import SegmentString
-from ghostLine import PointerTrackGhost
 from segment import LineSegment, CurveSegment
 
 
@@ -191,14 +190,6 @@ ALPHAMAX = 1.2
 
 # If elapsed time in milliseconds between pointer moves is greater, generate cusp-like instead of smooth.  
 MAX_POINTER_ELAPSED_FOR_SMOOTH = 100
-
-
-'''
-Unused cruft: did not use a state machine in CurveGenerator
-CURVE_STATE_NONE = 0
-LAST_GENERATED_TO_MID = 1
-LAST_GENERATED_TO_END = 2
-'''
 
 
 '''
@@ -228,12 +219,25 @@ def nullLine(point):
 
 class FreehandTool(object):
   
-  def __init__(self, ghostHead):
+  def __init__(self):
     self.turnGenerator = None # Flag, indicates pipe is generating
     # Ghost ungenerated tail of PointerPath with LinePathElement
-    self.pathTailGhost = ghostHead
-    self.path = None  # None until start using tool
     
+    # Tool operates on these, but they are None until setSegmentString
+    self.pathTailGhost = None
+    self.path = None  
+    
+    
+  def setSegmentString(self, segmentString, pathHeadGhost, position):
+    '''
+    Tell tool the SegmentString it should operate upon.
+    Caller should add SegmentString graphics item to scene.
+    '''
+    self.path = segmentString
+    self.pathTailGhost = pathHeadGhost
+    self.path.setStartPoint(startPoint=position)
+    self.pathTailGhost.showAt(position)
+
     
   def initFilterPipe(self, startPosition):
     ''' 
@@ -274,21 +278,16 @@ class FreehandTool(object):
       While user is moving pointer, we don't expect pipe to stop.
       If programming error stops pipe, quit app so we can see error trace.
       '''
+      print "Abnormal pointerMoveEvent, exiting"
       sys.exit()
+  
   
   def pointerPressEvent(self, position):
     ''' 
     Start freehand drawing. 
-    Init pipe and new graphics item. 
-    Caller should add graphics item to scene.
     '''
+    print "Here"
     self.initFilterPipe(position)
-    
-    # Create contiguous PointerTrack in a new single QGraphicPathItem
-    self.path = SegmentString()
-    self.path.setStartPoint(startPoint=position)
-    self.pathTailGhost.showAt(position)
-    return self.path
 
     
     
