@@ -33,6 +33,7 @@ class GraphicsView(QGraphicsView):
       self.freehandTool = FreehandTool(self.scene(), self)
 
 
+
   ''' Delegate events to FreehandTool. '''
   def mouseMoveEvent(self, event):
     # print "GV mouse moved"

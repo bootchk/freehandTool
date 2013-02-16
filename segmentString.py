@@ -138,9 +138,8 @@ class SegmentString(QGraphicsPathItem):
   
   ELEMENTS_PER_SEGMENT = 3
   
-  def __init__(self, startingPoint):
+  def __init__(self):
     super(SegmentString, self).__init__()
-    self.setPath(QPainterPath(startingPoint))
     self.actions = segmentStringActions # singleton
     
     # The following are not necessarily serialized, but usually reconstructable upon deserialize.
@@ -148,6 +147,7 @@ class SegmentString(QGraphicsPathItem):
     self.relations = Relations()
     self.cuspness = Cuspness()
     self.controlPointSet = None
+    # ensure: path has not been set, self.path() returns an empty path
   
   
   # Inherits path()
@@ -156,6 +156,13 @@ class SegmentString(QGraphicsPathItem):
   Responsibility: 1. know end points.
   '''
 
+  def setStartPoint(self, startPoint):
+    '''
+    Should only be called once: erases any existing path.
+    '''
+    self.setPath(QPainterPath(startPoint))
+    
+    
   def getEndPoint(self):
     ''' 
     End point of a SegmentString is:

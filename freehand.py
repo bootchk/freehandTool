@@ -292,7 +292,8 @@ class FreehandTool(object):
     
     startPosition = self._scenePositionFromEvent(event)
     # Create contiguous PointerTrack in a new single QGraphicPathItem
-    self.path = SegmentString(startingPoint=startPosition)
+    self.path = SegmentString()
+    self.path.setStartPoint(startPoint=startPosition)
     self.scene.addItem(self.path)     # Display pointerTrack
     self.pathTailGhost.showAt(startPosition)
     
