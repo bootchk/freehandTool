@@ -19,33 +19,19 @@ from segmentString import SegmentString
 
 
 class DiagramScene(QGraphicsScene):
-    def __init__(self, *args):
-        QGraphicsScene.__init__(self, *args)
-        self.addItem(QGraphicsTextItem("Freehand drawing with pointer"))
-        
-class GraphicsView(QGraphicsView):
-  def __init__(self, parent=None):
-      super(GraphicsView, self).__init__(parent)
-      
-      assert self.dragMode() is QGraphicsView.NoDrag
-      
-      self.setRenderHint(QPainter.Antialiasing)
-      self.setRenderHint(QPainter.TextAntialiasing)
-
-      self.setMouseTracking(True);  # Enable mouseMoveEvent
-      
-      
-      
-      
-      self.freehandTool = FreehandTool()
-
+  def __init__(self, *args):
+    QGraphicsScene.__init__(self, *args)
+    self.addItem(QGraphicsTextItem("Freehand drawing with pointer"))
+    
+    self.freehandTool = FreehandTool()
 
 
   ''' Delegate events to FreehandTool. '''
+    
   def mouseMoveEvent(self, event):
-    # print "GV mouse moved"
     ''' Tell freehandTool to update its SegmentString. '''
-    self.freehandTool.pointerMoveEvent(position=self._mapEventCoordsToScene(event))
+    self.freehandTool.pointerMoveEvent(position=event.scenePos())
+  
   
   def mousePressEvent(self, event):
     '''
@@ -54,26 +40,33 @@ class GraphicsView(QGraphicsView):
     '''
     freehandCurve = SegmentString()
     headGhost = PointerTrackGhost()
-    self.scene().addItem(freehandCurve)
-    self.scene().addItem(headGhost)
-    scenePosition = self._mapEventCoordsToScene(event)
+    self.addItem(freehandCurve)
+    self.addItem(headGhost)
     self.freehandTool.setSegmentString(segmentString=freehandCurve, 
                                        pathHeadGhost=headGhost, 
-                                       position=scenePosition)
-    self.freehandTool.pointerPressEvent(scenePosition)
+                                       position=event.scenePos())
+    self.freehandTool.pointerPressEvent(event.scenePos())
 
     
   def mouseReleaseEvent(self, event):
-    self.freehandTool.pointerReleaseEvent(position=self._mapEventCoordsToScene(event))
+    self.freehandTool.pointerReleaseEvent(position=event.scenePos())
   
-  def _mapEventCoordsToScene(self, event):
-    return self.mapToScene(event.x(), event.y())
   
-  # TESTING
   def keyPressEvent(self, event):
     self.freehandTool.keyPressEvent(event)
     
     
+    
+class GraphicsView(QGraphicsView):
+  def __init__(self, parent=None):
+      super(GraphicsView, self).__init__(parent)
+      
+      assert self.dragMode() is QGraphicsView.NoDrag
+      self.setRenderHint(QPainter.Antialiasing)
+      self.setRenderHint(QPainter.TextAntialiasing)
+      self.setMouseTracking(True);  # Enable mouseMoveEvent
+      
+      
 
 class MainWindow(QMainWindow):
     def __init__(self, *args):
