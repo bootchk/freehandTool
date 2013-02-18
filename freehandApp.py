@@ -39,12 +39,19 @@ class DiagramScene(QGraphicsScene):
     freehandTool remembers and updates SegmentString.
     '''
     freehandCurve = SegmentString()
-    headGhost = PointerTrackGhost()
     self.addItem(freehandCurve)
+    freehandCurve.setPos(event.scenePos())
+    # freehandCurve as QGraphicsItem positioned at event in scene.
+    # it keeps its internal data in its local CS
+    
+    headGhost = PointerTrackGhost()
     self.addItem(headGhost)
+    # headGhost at (0,0) in scene
+    # it keeps its local data in CS equivalent to scene
+    
     self.freehandTool.setSegmentString(segmentString=freehandCurve, 
                                        pathHeadGhost=headGhost, 
-                                       position=event.scenePos())
+                                       scenePosition=event.scenePos())
     self.freehandTool.pointerPressEvent(event.scenePos())
 
     

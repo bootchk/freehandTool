@@ -58,15 +58,16 @@ from cuspness import Cuspness
 from alternatePaintingQGPI import AlternateColorPaintingQGPI
 
   
-  
-class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
+# For testing use: class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
+class SegmentString(QGraphicsPathItem):
   '''
   GraphicsItem that is a sequence of Segments.
   
   Segments are line-like curves.
 
-  Segments don't have their own transform,
-  so they are moved by changing their control points.
+  Segments don't have their own transform.
+  Change their appearance by moving their control points.
+  When user drags control points, comes here as segmentChanged().
   
   Responsibilities:
   1. know endPoint, startPoint, countSegments
@@ -75,6 +76,7 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
   4. maintain relations between ControlPoints in ControlPointSet
   5. move control points
   6. maintain cusps and return cuspness of a segment
+  7. map between representations: external (Segment in View CS View) and internal (QPathElement in Local CS)
   
   Specific to Qt GUI toolkit.
   
@@ -133,26 +135,41 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
     self.relations = Relations()
     self.cuspness = Cuspness()
     self.controlPointSet = None
-    # ensure: path has not been set, self.path() returns an empty path
+    
+    self.setPath(QPainterPath(self.origin()))
+    # ensure: path has been set, self.path() returns "MoveTo(0,0)"
   
   
   # Inherits path()
 
   '''
   Responsibility: 1. know end points.
+  
+  !!! Note two different CS.
   '''
 
+  def origin(self):
+    '''
+    Where the internal path starts, in Local CS.
+    Conventionally, 0,0.
+    '''
+    return QPointF(0,0)
+  
+  '''
+  Formerly:
   def setStartPoint(self, startPoint):
-    '''
-    Should only be called once: erases any existing path.
-    '''
     self.setPath(QPainterPath(startPoint))
+    
+    # !!! This should work, but doesn't?: self.setPath(QPainterPath(startPoint=startPoint))
+    # It cost many hours finding that fact out.
+    # Before we changed to VCS, this was: 
+  '''
     
     
   def getEndPoint(self):
     ''' 
     End point of a SegmentString is:
-    - coordinates of its last element
+    - coordinates of its last element, in VCS
     - OR startingPoint if has no Segments
     '''
     return self._pointForPathElement(element = self.path().elementAt(self.path().elementCount() - 1))
@@ -161,18 +178,44 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
     ''' 
     Start point of a SegmentString is:
     - first element, regardless if has any Segments
+    - in VCS
     '''
     return self._pointForPathElement(element = self.path().elementAt(0))
+
   
   
+  '''
+  Responsibility: 7. map between representations
+  '''
   def _pointForPathElement(self, element):
     '''
-    Return  QPointF for QPathElements.
-    QPathElements don't have a x() method
-    Symptoms are "Exception: reverse not implemented"
+    Return  QPointF in VCS for QPathElements.
+    QPathElements don't have x(); calling it gives symptom "Exception: reverse not implemented"
+    
+    Also map from Local CS (of the QGraphicsItem) to View CS (of the tool)
     '''
+    return self._mapFromLocalToDevice(self._unmappedPointForPathElement(element))
+  
+  def _unmappedPointForPathElement(self, element):
+    ''' Point in LCS for element. '''
     return QPointF(element.x, element.y)
   
+  def _mapFromLocalToDevice(self, pointLCS):
+    return self.mapToScene(pointLCS)
+  
+  def _mapFromDeviceToLocal(self, pointVCS):
+    # TEMP from scene instead of View
+    return self.mapFromScene(pointVCS)
+  
+  
+  def appendInternalRepr(self, path, pointsLCS):
+    '''
+    Append internal repr of segment for given pointsLCS.
+    
+    !!! This is the only place where we know that internal repr is cubicTo (even for straight lines.)
+    !!! The fact that cubicTo has 3 points and Segment has 4 points is spread in the code.
+    '''
+    path.cubicTo(*pointsLCS)
   
   
   '''
@@ -216,10 +259,13 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
     ''' 
     Append internal representation of given Segment instance to given path. 
     
-    !!! All segments represented by QPathElement of ElementType:cubic i.e. curve
+    !!! All segments encoded by QPathElement of ElementType:cubic i.e. curve
     !!! Cubic only wants the final three ControlPoints.
     '''
-    path.cubicTo(*segment.asPoints()[1:])
+    pointsVCS = segment.asPoints()[1:]
+    # !!! Python map() and Qt 'map' meaning transform between coordinate systems
+    pointsLCS = map(self._mapFromDeviceToLocal, pointsVCS)
+    self.appendInternalRepr(path, pointsLCS)
     
   
   def segmentChanged(self, segment, indexOfSegmentInParent):
@@ -266,20 +312,24 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
   
   def _copySegmentPathToPath(self, sourcePath, destinationPath, segmentIndex):
     ''' Use elements of a segment from sourcePath to append a segment to destinationPath. '''
-    destinationPath.cubicTo(*self._pointsInPathForSegment(sourcePath,segmentIndex))
+    pointsLCS = self._pointsLCSInPathForSegment(sourcePath,segmentIndex)
+    self.appendInternalRepr(path=destinationPath, pointsLCS=pointsLCS)
   
   
-  def _pointsInPathForSegment(self, path, segmentIndex):
+  def _pointsLCSInPathForSegment(self, path, segmentIndex):
     ''' 
     Return list of QPointF for QPathElements of segment.
-    !!! This is a 3-tuple, not sufficient for creating Segment
+    Points are in LCS
+    !!! This is a 3-tuple, not for creating Segment, only for creating internal repr
     '''
     result = []
     for i in range(0, SegmentString.ELEMENTS_PER_SEGMENT):
-      result.append(self._pointForPathElement(element = path.elementAt(segmentIndex + i)))
+      result.append(self._unmappedPointForPathElement(element = path.elementAt(segmentIndex + i)))
     return result
     
-    
+  def _pointsVCSInPathForSegment(self, path, segmentIndex):
+    return map(self._mapFromLocalToDevice, self._pointsLCSInPathForSegment(path, segmentIndex))
+  
     
   '''
   Responsibility: 
@@ -322,12 +372,16 @@ class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
       startPoint = self.getStartPoint()
     else:
       # Last point of previous segment is first point of this segment
-      startPoint = self._pointsInPathForSegment(self.path(), segmentIndex - SegmentString.ELEMENTS_PER_SEGMENT)[-1]
-    pointsFromPath = self._pointsInPathForSegment(self.path(), segmentIndex)
+      startPoint = self._lastPointOfPriorSegment(segmentIndex)
+    pointsFromPath = self._pointsVCSInPathForSegment(self.path(), segmentIndex)
+    # assert points are VCS
     segment = CurveSegment(startPoint, *pointsFromPath)
     # assert ControlPoints were created and refer to segment
     segment.setIndexInParent(parent=self, indexOfSegmentInParent = segmentIndex)
     return segment
+  
+  def _lastPointOfPriorSegment(self, segmentIndex):
+    return self._pointsVCSInPathForSegment(self.path(), segmentIndex - SegmentString.ELEMENTS_PER_SEGMENT)[-1]
   
   
   def clearTraversal(self):

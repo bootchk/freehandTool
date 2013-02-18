@@ -176,7 +176,6 @@ import traceback
 from PySide.QtCore import QLineF, QPointF, QTime, Qt
 # !!! Otherwise, no dependence on Qt graphics
 
-from segmentString import SegmentString
 from segment import LineSegment, CurveSegment
 
 
@@ -228,15 +227,14 @@ class FreehandTool(object):
     self.path = None  
     
     
-  def setSegmentString(self, segmentString, pathHeadGhost, position):
+  def setSegmentString(self, segmentString, pathHeadGhost, scenePosition):
     '''
     Tell tool the SegmentString it should operate upon.
     Caller should add SegmentString graphics item to scene.
     '''
     self.path = segmentString
     self.pathTailGhost = pathHeadGhost
-    self.path.setStartPoint(startPoint=position)
-    self.pathTailGhost.showAt(position)
+    self.pathTailGhost.showAt(scenePosition)
 
     
   def initFilterPipe(self, startPosition):
@@ -286,7 +284,6 @@ class FreehandTool(object):
     ''' 
     Start freehand drawing. 
     '''
-    print "Here"
     self.initFilterPipe(position)
 
     
@@ -309,7 +306,14 @@ class FreehandTool(object):
                              segmentCuspness=[False])
     
   def keyPressEvent(self, event):
-    ''' For testing, simulate a GUI that moves ControlPoints. '''
+    ''' 
+    For testing, simulate a GUI that moves ControlPoints. 
+    
+    Any key will move a control point (fixed by constant below.)
+    If ControlKey is down, will move the control point
+    in an alternate mode (moving the control point independently
+    versus moving the control point and its related control point together.)
+     '''
     # TODO: we don't need this on every keyPress, just the first 
     controlPointSet = self.path.getControlPointSet()
     
