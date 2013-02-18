@@ -23,45 +23,6 @@ class DiagramScene(QGraphicsScene):
     QGraphicsScene.__init__(self, *args)
     self.addItem(QGraphicsTextItem("Freehand drawing with pointer"))
     
-    self.freehandTool = FreehandTool()
-
-
-  ''' Delegate events to FreehandTool. '''
-    
-  def mouseMoveEvent(self, event):
-    ''' Tell freehandTool to update its SegmentString. '''
-    self.freehandTool.pointerMoveEvent(position=event.scenePos())
-  
-  
-  def mousePressEvent(self, event):
-    '''
-    On mouse button down, create a new (infinitesmal) SegmentString and PointerTrackGhost.
-    freehandTool remembers and updates SegmentString.
-    '''
-    freehandCurve = SegmentString()
-    self.addItem(freehandCurve)
-    freehandCurve.setPos(event.scenePos())
-    # freehandCurve as QGraphicsItem positioned at event in scene.
-    # it keeps its internal data in its local CS
-    
-    headGhost = PointerTrackGhost()
-    self.addItem(headGhost)
-    # headGhost at (0,0) in scene
-    # it keeps its local data in CS equivalent to scene
-    
-    self.freehandTool.setSegmentString(segmentString=freehandCurve, 
-                                       pathHeadGhost=headGhost, 
-                                       scenePosition=event.scenePos())
-    self.freehandTool.pointerPressEvent(event.scenePos())
-
-    
-  def mouseReleaseEvent(self, event):
-    self.freehandTool.pointerReleaseEvent(position=event.scenePos())
-  
-  
-  def keyPressEvent(self, event):
-    self.freehandTool.keyPressEvent(event)
-    
     
     
 class GraphicsView(QGraphicsView):
@@ -72,6 +33,57 @@ class GraphicsView(QGraphicsView):
       self.setRenderHint(QPainter.Antialiasing)
       self.setRenderHint(QPainter.TextAntialiasing)
       self.setMouseTracking(True);  # Enable mouseMoveEvent
+      
+      self.freehandTool = FreehandTool()
+
+
+
+  ''' Delegate events to FreehandTool. '''
+    
+  def mouseMoveEvent(self, event):
+    ''' Tell freehandTool to update its SegmentString. '''
+    self.freehandTool.pointerMoveEvent(position=self.viewPosOfEvent(event))
+  
+  
+  def mousePressEvent(self, event):
+    '''
+    On mouse button down, create a new (infinitesmal) SegmentString and PointerTrackGhost.
+    freehandTool remembers and updates SegmentString.
+    '''
+    freehandCurve = SegmentString()
+    self.scene().addItem(freehandCurve)
+    freehandCurve.setPos(self.scenePosOfEvent(event))
+    # freehandCurve as QGraphicsItem positioned at event in scene.
+    # it keeps its internal data in its local CS
+    
+    headGhost = PointerTrackGhost()
+    self.scene().addItem(headGhost)
+    # headGhost at (0,0) in scene
+    # it keeps its local data in CS equivalent to scene
+    
+    self.freehandTool.setSegmentString(segmentString=freehandCurve, 
+                                       pathHeadGhost=headGhost, 
+                                       scenePosition=self.scenePosOfEvent(event))
+    self.freehandTool.pointerPressEvent(position=self.viewPosOfEvent(event))
+
+    
+  def mouseReleaseEvent(self, event):
+    self.freehandTool.pointerReleaseEvent(position=self.viewPosOfEvent(event))
+  
+  
+  def keyPressEvent(self, event):
+    self.freehandTool.keyPressEvent(event)
+    
+  def scenePosOfEvent(self, event):
+    return self.mapToScene(event.x(), event.y())
+    
+  def viewPosOfEvent(self, event):
+    '''
+    Event coords in View, as float !!! since freehandTool wants a float.
+    '''
+    result = QPointF(event.x(), event.y())
+    #print "View pos", result
+    return result
       
       
 

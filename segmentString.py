@@ -39,6 +39,11 @@ See notes below.
 
 Cuspness is populated as a SegmentString is created.
 
+Coordinate systems
+==================
+
+
+
 FIXME:
 ======
 
@@ -49,7 +54,7 @@ Cuspness deserialized.
 '''
 
 from PySide.QtGui import QGraphicsPathItem, QPainterPath
-from PySide.QtCore import QPointF
+from PySide.QtCore import QPointF, QPoint
 
 from segment import CurveSegment
 from relations import Relations
@@ -201,11 +206,20 @@ class SegmentString(QGraphicsPathItem):
     return QPointF(element.x, element.y)
   
   def _mapFromLocalToDevice(self, pointLCS):
-    return self.mapToScene(pointLCS)
+    pointSCS = self.mapToScene(pointLCS)
+    # !!! Loss of precision
+    intPointVCS = self.scene().views()[0].mapFromScene(pointSCS)
+    return QPointF(intPointVCS)
   
   def _mapFromDeviceToLocal(self, pointVCS):
-    # TEMP from scene instead of View
-    return self.mapFromScene(pointVCS)
+    '''
+    Map from freehandTool internal coordinate in View CS float
+    to QGraphicsItem Local CS float.
+    '''
+    # !!! Loss of precision
+    intPointVCS = QPoint(round(pointVCS.x()), round(pointVCS.y()))
+    pointSCS = self.scene().views()[0].mapToScene(intPointVCS)
+    return self.mapFromScene(pointSCS)
   
   
   def appendInternalRepr(self, path, pointsLCS):

@@ -168,6 +168,13 @@ From Qt we use:
 to represent user's stroke, 
 - OR a set of QGraphicItems for lines and segments
 
+Coordinate systems (CS)
+=======================
+Tool input is a pointer track.
+Typically (e.g. Qt) these are in a view CS, and as in a QMouseEvent, are ints.
+Caller should convert to floats.
+Tool uses float arithmetic.
+Tool passes floats to SegmentString.
 '''
 import sys
 import traceback
@@ -301,8 +308,10 @@ class FreehandTool(object):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
+    # position is int in ViewCS.  Doesn't automatically cast to QPointF
+    positionF = QPointF(position.x(), position.y())
     self.path.appendSegments( [LineSegment(self.path.getEndPoint(), 
-                                           position)],
+                                           positionF)],
                              segmentCuspness=[False])
     
   def keyPressEvent(self, event):
