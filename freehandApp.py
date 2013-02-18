@@ -13,6 +13,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 import sys
 
+from pointerEvent import PointerEvent
 from freehand import FreehandTool
 from ghostLine import PointerTrackGhost
 from segmentString import SegmentString
@@ -42,7 +43,7 @@ class GraphicsView(QGraphicsView):
     
   def mouseMoveEvent(self, event):
     ''' Tell freehandTool to update its SegmentString. '''
-    self.freehandTool.pointerMoveEvent(position=self.viewPosOfEvent(event))
+    self.freehandTool.pointerMoveEvent(PointerEvent(mapper=self, event=event))
   
   
   def mousePressEvent(self, event):
@@ -50,40 +51,37 @@ class GraphicsView(QGraphicsView):
     On mouse button down, create a new (infinitesmal) SegmentString and PointerTrackGhost.
     freehandTool remembers and updates SegmentString.
     '''
+    pointerEvent = PointerEvent(mapper=self, event=event) # massage event
+    
+    '''
+    freehandCurve as QGraphicsItem positioned at event in scene.
+    It keeps its internal data in its local CS
+    '''
     freehandCurve = SegmentString()
     self.scene().addItem(freehandCurve)
-    freehandCurve.setPos(self.scenePosOfEvent(event))
-    # freehandCurve as QGraphicsItem positioned at event in scene.
-    # it keeps its internal data in its local CS
-    
+    freehandCurve.setPos(pointerEvent.scenePos)
+
+    '''
+    headGhost at (0,0) in scene
+    it keeps its local data in CS equivalent to scene
+    '''
     headGhost = PointerTrackGhost()
     self.scene().addItem(headGhost)
-    # headGhost at (0,0) in scene
-    # it keeps its local data in CS equivalent to scene
     
     self.freehandTool.setSegmentString(segmentString=freehandCurve, 
                                        pathHeadGhost=headGhost, 
-                                       scenePosition=self.scenePosOfEvent(event))
-    self.freehandTool.pointerPressEvent(position=self.viewPosOfEvent(event))
+                                       scenePosition=pointerEvent.scenePos)
+    self.freehandTool.pointerPressEvent(pointerEvent)
 
     
   def mouseReleaseEvent(self, event):
-    self.freehandTool.pointerReleaseEvent(position=self.viewPosOfEvent(event))
+    self.freehandTool.pointerReleaseEvent(PointerEvent(mapper=self, event=event))
   
   
   def keyPressEvent(self, event):
     self.freehandTool.keyPressEvent(event)
     
-  def scenePosOfEvent(self, event):
-    return self.mapToScene(event.x(), event.y())
-    
-  def viewPosOfEvent(self, event):
-    '''
-    Event coords in View, as float !!! since freehandTool wants a float.
-    '''
-    result = QPointF(event.x(), event.y())
-    #print "View pos", result
-    return result
+  
       
       
 

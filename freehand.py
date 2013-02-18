@@ -227,21 +227,24 @@ class FreehandTool(object):
   
   def __init__(self):
     self.turnGenerator = None # Flag, indicates pipe is generating
-    # Ghost ungenerated tail of PointerPath with LinePathElement
+    # Also attributes: lineGenerator and curveGenerator
     
     # Tool operates on these, but they are None until setSegmentString
-    self.pathTailGhost = None
+    self.pathHeadGhost = None
     self.path = None  
     
     
   def setSegmentString(self, segmentString, pathHeadGhost, scenePosition):
     '''
+    Initialization.
+    
     Tell tool the SegmentString it should operate upon.
-    Caller should add SegmentString graphics item to scene.
+    Caller should add segmentString graphics item to scene.
+    Tool starts writing into segmentString after pointerPressEvent().
     '''
     self.path = segmentString
-    self.pathTailGhost = pathHeadGhost
-    self.pathTailGhost.showAt(scenePosition)
+    self.pathHeadGhost = pathHeadGhost
+    self.pathHeadGhost.showAt(scenePosition)
 
     
   def initFilterPipe(self, startPosition):
@@ -271,13 +274,13 @@ class FreehandTool(object):
       self.curveGenerator.close()
 
 
-  def pointerMoveEvent(self, position):
+  def pointerMoveEvent(self, pointerEvent):
     ''' Feed pointerMoveEvent into a pipe. '''
     try:
       # Generate if pointer button down
       if self.turnGenerator is not None:
-        self.turnGenerator.send(position)  # Feed pipe
-        self.pathTailGhost.updateEnd(position)
+        self.turnGenerator.send(pointerEvent.viewPos)  # Feed pipe
+        self.pathHeadGhost.updateEnd(pointerEvent.scenePos)
     except StopIteration:
       '''
       While user is moving pointer, we don't expect pipe to stop.
@@ -287,16 +290,16 @@ class FreehandTool(object):
       sys.exit()
   
   
-  def pointerPressEvent(self, position):
+  def pointerPressEvent(self, pointerEvent):
     ''' 
     Start freehand drawing. 
     '''
-    self.initFilterPipe(position)
+    self.initFilterPipe(pointerEvent.viewPos)
 
     
     
   
-  def pointerReleaseEvent(self, position):
+  def pointerReleaseEvent(self, pointerEvent):
     ''' Stop freehand drawing. '''
     self.closeFilterPipe()
     '''
@@ -308,12 +311,10 @@ class FreehandTool(object):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
-    # position is int in ViewCS.  Doesn't automatically cast to QPointF
-    positionF = QPointF(position.x(), position.y())
-    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), 
-                                           positionF)],
+    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), pointerEvent.viewPos)],
                              segmentCuspness=[False])
     
+  
   def keyPressEvent(self, event):
     ''' 
     For testing, simulate a GUI that moves ControlPoints. 
@@ -448,10 +449,9 @@ class FreehandTool(object):
           # segments = nullcurveFromLines(previousLine, line) # TEST
           previousLine = line  # Roll forward
         
-        # Add results to PointerTrack.
-        self.path.appendSegments(segments, segmentCuspness=cuspness) # add segment to existing path
+        self.path.appendSegments(segments, segmentCuspness=cuspness) # add segment to existing PointerTrack path
         
-        self.pathTailGhost.updateStart(pathEndPoint)  # Update ghost to start at end of PointerTrack
+        self.pathHeadGhost.updateStart(pathEndPoint)
        
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception

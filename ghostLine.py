@@ -12,7 +12,7 @@ Another alternative is keep the head in the SegmentString, updating it.
 '''
 
 from PySide.QtGui import QGraphicsLineItem
-from PySide.QtCore import QLineF
+from PySide.QtCore import QLineF, QPoint
 
 
 
@@ -40,8 +40,11 @@ class PointerTrackGhost(QGraphicsLineItem):
     self.setLine(QLineF(self.start, self.end))
     self.show()
     
-  def updateStart(self, point):
-    self.start = point
+  def updateStart(self, pointVCS):
+    ''' !!! start point from FreehandTool is in View CS. '''
+    pointViewInt = QPoint(pointVCS.x(), pointVCS.y())
+    pointSceneFloat = self.scene().views()[0].mapToScene(pointViewInt)
+    self.start = pointSceneFloat
     self.setLine(QLineF(self.start, self.end))
     
   def updateEnd(self, point):
