@@ -181,6 +181,7 @@ import traceback
 
 # !!! QTime for timing of cusps
 from PySide.QtCore import QLineF, QPointF, QTime, Qt
+from PySide.QtCore import QObject
 # !!! Otherwise, no dependence on Qt graphics
 
 from segment import LineSegment, CurveSegment
@@ -223,7 +224,8 @@ def nullLine(point):
 
 
 
-class FreehandTool(object):
+#class FreehandTool(object):
+class FreehandTool(QObject):
   
   def __init__(self):
     self.turnGenerator = None # Flag, indicates pipe is generating

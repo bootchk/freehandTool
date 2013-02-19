@@ -43,7 +43,9 @@ class GraphicsView(QGraphicsView):
     
   def mouseMoveEvent(self, event):
     ''' Tell freehandTool to update its SegmentString. '''
-    self.freehandTool.pointerMoveEvent(PointerEvent(mapper=self, event=event))
+    pointerEvent = PointerEvent()
+    pointerEvent.makeFromEvent(mapper=self, event=event)
+    self.freehandTool.pointerMoveEvent(pointerEvent)
   
   
   def mousePressEvent(self, event):
@@ -51,7 +53,8 @@ class GraphicsView(QGraphicsView):
     On mouse button down, create a new (infinitesmal) SegmentString and PointerTrackGhost.
     freehandTool remembers and updates SegmentString.
     '''
-    pointerEvent = PointerEvent(mapper=self, event=event) # massage event
+    pointerEvent = PointerEvent()
+    pointerEvent.makeFromEvent(mapper=self, event=event)
     
     '''
     freehandCurve as QGraphicsItem positioned at event in scene.
@@ -75,7 +78,9 @@ class GraphicsView(QGraphicsView):
 
     
   def mouseReleaseEvent(self, event):
-    self.freehandTool.pointerReleaseEvent(PointerEvent(mapper=self, event=event))
+    pointerEvent = PointerEvent()
+    pointerEvent.makeFromEvent(mapper=self, event=event)
+    self.freehandTool.pointerReleaseEvent(pointerEvent)
   
   
   def keyPressEvent(self, event):
