@@ -302,8 +302,10 @@ class FreehandTool(QObject):
     
   
   def pointerReleaseEvent(self, pointerEvent):
-    ''' Stop freehand drawing. '''
+    ''' User has ended freehand drawing. '''
     self.closeFilterPipe()
+    self.pathHeadGhost.hide()
+    
     '''
     CurveGenerator only finally draws to midpoint of current PathLine.
     Add final element to path, a LinePathElement from midpoint to current PointerPosition.
