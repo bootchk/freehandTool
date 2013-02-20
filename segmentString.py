@@ -75,6 +75,7 @@ class SegmentString(QGraphicsPathItem):
   When user drags control points, comes here as segmentChanged().
   
   Responsibilities:
+  0. know internal representation
   1. know endPoint, startPoint, countSegments
   2. maintain structure (add segment, update segment, delete(FIXME))
   3. get ControlPointSet (so user can manipulate them.)
@@ -142,10 +143,26 @@ class SegmentString(QGraphicsPathItem):
     self.controlPointSet = None
     
     self.setPath(QPainterPath(self.origin()))
-    # ensure: path has been set, self.path() returns "MoveTo(0,0)"
+    # ensure: path has been set, self.myPath() returns "MoveTo(0,0)"
   
   
-  # Inherits path()
+  '''
+  Responisibility 0. know internal representation
+  '''
+  def myPath(self):
+    '''
+    QPainterPath i.e. internal representation.
+    
+    Explicitly calls QGraphicsPathItem.path(), since a class that inherits this class
+    may reimplement path(), and then a call from this module to self.path() would
+    find the reimplemented method via the MRO.
+    (For example, a class that inherits may redefine path() to return a one pixel larger path, etc.)
+    
+    Public since importers of this module (library) may want it,
+    but note that it is a copy, not updateable to any effect.
+    '''
+    return super(SegmentString, self).path()
+
 
   '''
   Responsibility: 1. know end points.
@@ -177,7 +194,7 @@ class SegmentString(QGraphicsPathItem):
     - coordinates of its last element, in VCS
     - OR startingPoint if has no Segments
     '''
-    return self._pointForPathElement(element = self.path().elementAt(self.path().elementCount() - 1))
+    return self._pointForPathElement(element = self.myPath().elementAt(self.myPath().elementCount() - 1))
   
   def getStartPoint(self):
     ''' 
@@ -185,7 +202,7 @@ class SegmentString(QGraphicsPathItem):
     - first element, regardless if has any Segments
     - in VCS
     '''
-    return self._pointForPathElement(element = self.path().elementAt(0))
+    return self._pointForPathElement(element = self.myPath().elementAt(0))
 
   
   
@@ -248,19 +265,18 @@ class SegmentString(QGraphicsPathItem):
     
     FUTURE might be faster to union existing path with new path.
     '''
-    # print segments
+    ##print "Append segments", segments
     
     # copy current path
-    pathCopy = self.path()
+    pathCopy = self.myPath()
     segmentOrdinal = 0
     for segment in segments:
-      indexOfSegmentInParent=pathCopy.elementCount()
       self._appendSegmentToPath(segment, pathCopy)
       if segmentCuspness[segmentOrdinal]:
-        self.cuspness.setCuspness(indexOfSegmentInParent)
+        self.cuspness.setCuspness(self.indexOfLastSegment())
       segmentOrdinal += 1
       
-    # !!! pathCopy is NOT an alias for self.path() now, they differ.  Hence:
+    # !!! pathCopy is NOT an alias for self.myPath() now, they differ.  Hence:
     self.setPath(pathCopy)
     # No need to invalidate or update display, at least for Qt
     
@@ -283,7 +299,11 @@ class SegmentString(QGraphicsPathItem):
     
   
   def segmentChanged(self, segment, indexOfSegmentInParent):
-    ''' Given segment has changed. Propagate change to self. '''
+    ''' 
+    User changed control points of segment (i.e. model.)
+    Propagate change to path (i.e. view.) 
+    '''
+    ## print "Segment changed"
     self.updateSegment(segment, indexOfSegmentInParent)
   
   
@@ -291,18 +311,18 @@ class SegmentString(QGraphicsPathItem):
     '''
     Update drawable with changed segment.
     
-    Understands that internal format self.path() is not updateable.
+    Understands that internal format self.myPath() is not updateable.
     Thus it is copy into new, with one changed segment in the middle.
     IE copies prefix, appends changed Segment, copies suffix.
     '''
     # startingPoint same as existing path
     # FIXME: what if user changes the starting controlPoint???
-    newPath = QPainterPath(self.path().elementAt(0))
+    newPath = QPainterPath(self.myPath().elementAt(0))
     for segmentIndex in self._segmentIndexIter():
       if segmentIndex == indexOfSegmentInParent:
         self._appendSegmentToPath(segment, newPath)
       else:
-        self._copySegmentPathToPath(sourcePath=self.path(), destinationPath=newPath, segmentIndex=segmentIndex)
+        self._copySegmentPathToPath(sourcePath=self.myPath(), destinationPath=newPath, segmentIndex=segmentIndex)
     # Assert SegmentString.getEndPoint is correct even case last segment updated
     self.setPath(newPath)
         
@@ -315,14 +335,20 @@ class SegmentString(QGraphicsPathItem):
     Starts at 1, since here zeroeth QPathElement is a MoveTo.
     EG 1, 4, 7, 10, ...
     
-    !!! Relies on all segments represented as 3-tuple curves.
+    !!! Relies on all segments (except the first MoveTo) represented as 3-tuple curves.
     '''
-    for i in range(0, self.segmentCount()):
-      yield i * SegmentString.ELEMENTS_PER_SEGMENT + 1
+    for i in range(0, self.countSegments()):
+      yield i * SegmentString.ELEMENTS_PER_SEGMENT + 1  # +1 to get by first MoveTo
   
   
-  def segmentCount(self):
-    return self.path().elementCount()/SegmentString.ELEMENTS_PER_SEGMENT
+  def countSegments(self):
+    result = self.myPath().elementCount()/SegmentString.ELEMENTS_PER_SEGMENT
+    return result
+  
+  def indexOfLastSegment(self):
+    return self.countSegments() - 1
+    
+    
   
   def _copySegmentPathToPath(self, sourcePath, destinationPath, segmentIndex):
     ''' Use elements of a segment from sourcePath to append a segment to destinationPath. '''
@@ -387,7 +413,7 @@ class SegmentString(QGraphicsPathItem):
     else:
       # Last point of previous segment is first point of this segment
       startPoint = self._lastPointOfPriorSegment(segmentIndex)
-    pointsFromPath = self._pointsVCSInPathForSegment(self.path(), segmentIndex)
+    pointsFromPath = self._pointsVCSInPathForSegment(self.myPath(), segmentIndex)
     # assert points are VCS
     segment = CurveSegment(startPoint, *pointsFromPath)
     # assert ControlPoints were created and refer to segment
@@ -395,7 +421,7 @@ class SegmentString(QGraphicsPathItem):
     return segment
   
   def _lastPointOfPriorSegment(self, segmentIndex):
-    return self._pointsVCSInPathForSegment(self.path(), segmentIndex - SegmentString.ELEMENTS_PER_SEGMENT)[-1]
+    return self._pointsVCSInPathForSegment(self.myPath(), segmentIndex - SegmentString.ELEMENTS_PER_SEGMENT)[-1]
   
   
   def clearTraversal(self):

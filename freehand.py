@@ -305,6 +305,7 @@ class FreehandTool(QObject):
     ''' User has ended freehand drawing. '''
     self.closeFilterPipe()
     self.pathHeadGhost.hide()
+    print "Final segment count", self.path.countSegments()
     
     '''
     CurveGenerator only finally draws to midpoint of current PathLine.
@@ -571,7 +572,7 @@ class FreehandTool(QObject):
     Note this is a PathLine, not a LinePathElement.
     '''
     constraints.__init__()
-    # print "Force PathLine", startTurn, currentTurn
+    ## print "Force PathLine", startTurn, currentTurn
     return QLineF(startTurn, currentTurn)
     
     
