@@ -305,7 +305,6 @@ class FreehandTool(QObject):
     ''' User has ended freehand drawing. '''
     self.closeFilterPipe()
     self.pathHeadGhost.hide()
-    print "Final segment count", self.path.countSegments()
     
     '''
     CurveGenerator only finally draws to midpoint of current PathLine.
@@ -316,8 +315,10 @@ class FreehandTool(QObject):
     If last generated MidToEnd, we might not need this,
     but that might leave end of PointerTrack one pixel off.
     '''
+    #TODO straight line is crude, should generate a curve
     self.path.appendSegments( [LineSegment(self.path.getEndPoint(), pointerEvent.viewPos)],
                              segmentCuspness=[False])
+    print "Final segment count", self.path.countSegments()
     
   
   def keyPressEvent(self, event):

@@ -108,7 +108,7 @@ class SegmentActions(object):
     if controlPoint.parentSegment.isLastAnchor(controlPoint):
       return controlPoint
     else: # not an anchor or first anchor
-      segmentString = controlPoint.parentSegment.parent
+      segmentString = controlPoint.parentSegment.parentString
       # Only the SegmentString knows TiedTo relation between Anchors of different segments
       return segmentString.relations.getRelatedInstance(controlPoint, TIED_TO)
     # assert returns last Anchor or None
@@ -118,9 +118,9 @@ class SegmentActions(object):
     ''' Is this distinguished Anchor at a Cusp? '''
     # assert controlPoint is Anchor and last in segment
     parentSegment = controlPoint.parentSegment
-    segmentString = parentSegment.parent
+    segmentString = parentSegment.parentString
     # SegmentString knows which segments are cusps
-    return segmentString.isSegmentCusp(parentSegment.getIndexInParent())
+    return segmentString.isSegmentCusp(parentSegment.getIndexInString())
   
     
   def isRoleAnchor(self, relations, controlPoint):
@@ -205,8 +205,8 @@ class SegmentActions(object):
     distinguishedAnchor = self.getDistinguishedAnchorOfPair(controlPoint)
     if distinguishedAnchor is not None:
       segment = distinguishedAnchor.parentSegment
-      segmentString = segment.parent
-      segmentIndex = segment.getIndexInParent()
+      segmentString = segment.parentString
+      segmentIndex = segment.getIndexInString()
       segmentString.setSegmentCuspness(segmentIndex)
       
     

@@ -30,7 +30,7 @@ class Segment(object):
   
   Responsibilities:
   - produce representation as sequence of points
-  - know index in parent
+  - know index in parent SegmentString
   - create ControlPoints and Relations between them (on instantiation)
   - know relations between ControlPoints and order them
   - know endPoint and whether a ControlPoint is that endPoint
@@ -38,8 +38,8 @@ class Segment(object):
   '''
   
   def __init__(self):
-    self.parent = None
-    self.indexOfSegmentInParent = None
+    self.parentString = None
+    self.indexOfSegmentInString = None
     # Every segment has FOUR ControlPoints
     self.controlPoints = [ControlPoint(self, 0), ControlPoint(self, 1), ControlPoint(self, 2), ControlPoint(self, 3)]
     
@@ -57,12 +57,12 @@ class Segment(object):
     return [controlPoint.getCoordinate() for controlPoint in self.controlPoints]
   
   
-  def setIndexInParent(self, parent, indexOfSegmentInParent):
-    self.parent = parent
-    self.indexOfSegmentInParent = indexOfSegmentInParent
+  def setIndexInString(self, parentString, indexOfSegmentInString):
+    self.parentString = parentString
+    self.indexOfSegmentInString = indexOfSegmentInString
     
-  def getIndexInParent(self):
-    return self.indexOfSegmentInParent
+  def getIndexInString(self):
+    return self.indexOfSegmentInString
   
   
   def createRelations(self, relations, previousEndAnchor=None):
@@ -93,7 +93,7 @@ class Segment(object):
     Event: a control point has changed. 
     Relay to segment, i.e. update draw.
     '''
-    self.parent.segmentChanged(segment=self, indexOfSegmentInParent=self.indexOfSegmentInParent)
+    self.parentString.segmentChanged(segment=self, indexOfSegmentInString=self.indexOfSegmentInString)
     
   def controlPointIter(self):
     ''' Iterate control points in a canonical order: start,..., end '''
