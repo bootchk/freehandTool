@@ -384,7 +384,8 @@ class FreehandTool(QObject):
           previousPosition = position  # Roll forward
         else: # path is still on an axis: wait
           pass
-    finally:
+    # Not catching general exceptions, have not found a need for it.
+    except GeneratorExit:
       print "Closing turn generator"
       # assert position is defined
       if previousPosition != position:
@@ -407,6 +408,7 @@ class FreehandTool(QObject):
     startTurn = startPosition
     previousTurn = startPosition
     constraints = Constraints()
+    didLastEmitCusp = False # state
     # directions = Directions()
     #turnClock = QTime.currentTime()  # note restart returns elapsed
     #turnClock.restart()
@@ -421,13 +423,18 @@ class FreehandTool(QObject):
           self.curveGenerator.send((line, False))
           # self.labelLine(str(positionElapsedTime), turn)
           startTurn = previousTurn  # !!! current turn is part of next line
+          didLastEmitCusp = False
         elif positionElapsedTime > MAX_POINTER_ELAPSED_FOR_SMOOTH:
           # User turned slowly, send a forced PathLine which subsequently makes cusp-like graphic
           # Effectively, eliminate generation lag by generating a LinePathElement.
-          forcedLine = self.forceLineFromPath(startTurn, previousTurn, turn, constraints)
-          self.curveGenerator.send((forcedLine, True))
-          ## For debug: self.labelLine("F" + str(positionElapsedTime), turn)
-          startTurn = previousTurn  # !!! current turn is part of next PathLine
+          if not didLastEmitCusp:
+            forcedLine = self.forceLineFromPath(startTurn, previousTurn, turn, constraints)
+            self.curveGenerator.send((forcedLine, True))
+            ## For debug: self.labelLine("F" + str(positionElapsedTime), turn)
+            startTurn = previousTurn  # !!! current turn is part of next PathLine
+            didLastEmitCusp = True
+          else:
+            print "Skipping consecutive cusps"
         # else current path (all turns) still satisfied by a PathLine: wait
           
         previousTurn = turn  # Roll forward  !!! Every turn, not just on send()
@@ -436,7 +443,8 @@ class FreehandTool(QObject):
       # Unexpected programming errors, which are obscured unless caught
       print "Exception in LineGenerator"
       traceback.print_exc()
-    finally:
+      raise
+    except GeneratorExit:
       print "closing line generator"
       if previousTurn != startTurn:
         print "Closing line generator, startTurn, previousTurn", startTurn, previousTurn
@@ -477,7 +485,7 @@ class FreehandTool(QObject):
       print "Exception in CurveGenerator"
       traceback.print_exc()
       raise
-    finally:
+    except GeneratorExit:
       ''' 
       Last drawn element stopped at midpoint of PathLine.
       Caller must draw one last element from there to current PointerPosition.
