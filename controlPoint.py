@@ -36,8 +36,13 @@ class ControlPoint(object):
     self.indexInParent = indexInParent
   
   
+  def __eq__(self, other):
+    return self.coordinate == other.coordinate
+  
+  
   def getCoordinate(self):
     return self.coordinate
+  
   
   def setCoordinate(self, coordinate):
     ''' 

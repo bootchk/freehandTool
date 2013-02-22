@@ -152,7 +152,7 @@ class SegmentString(QGraphicsPathItem):
   
   
   '''
-  Responisibility 0. know internal representation
+  Responsibility 0. know internal representation
   '''
   def myPath(self):
     '''
@@ -162,6 +162,8 @@ class SegmentString(QGraphicsPathItem):
     may reimplement path(), and then a call from this module to self.path() would
     find the reimplemented method via the MRO.
     (For example, a class that inherits may redefine path() to return a one pixel larger path, etc.)
+    
+    !!! Do not use self.path() in this module.
     
     Public since importers of this module (library) may want it,
     but note that it is a copy, not updateable to any effect.
@@ -195,7 +197,7 @@ class SegmentString(QGraphicsPathItem):
   '''
     
     
-  def getEndPoint(self):
+  def getEndPointVCS(self):
     ''' 
     End point of a SegmentString is:
     - coordinates of its last element, in VCS
@@ -209,7 +211,7 @@ class SegmentString(QGraphicsPathItem):
     '''
     return self._pointVCSForPathElement(element = self.myPath().elementAt(self.myPath().elementCount() - 1))
   
-  def getStartPoint(self):
+  def getStartPointVCS(self):
     ''' 
     Start point of a SegmentString is:
     - first element, regardless if has any Segments
@@ -282,6 +284,7 @@ class SegmentString(QGraphicsPathItem):
     FUTURE might be faster to union existing path with new path.
     '''
     ##print "Append segments", segments
+    previousSegmentCount = self.countSegments()
     
     # copy current path
     pathCopy = self.myPath()
@@ -295,6 +298,9 @@ class SegmentString(QGraphicsPathItem):
       
     # !!! pathCopy is NOT an alias for self.myPath() now, they differ.  Hence:
     self.setPath(pathCopy)
+    
+    # ensure
+    assert self.countSegments() == previousSegmentCount + len(segments), ','.join((str(previousSegmentCount), str(len(segments)), str(self.countSegments())))
     # No need to invalidate or update display, at least for Qt
     
     # TEST try to alter the path: has no effect, QPathElements are constants??
@@ -307,9 +313,11 @@ class SegmentString(QGraphicsPathItem):
     Append given Segment instance to path.
     '''
     # assert Segment in VCS !!!
-    pointsVCS = segment.asPoints()
+    assert not segment.isNull(), str(segment)
+    
     # !!! Python map() and Qt 'map' meaning transform between coordinate systems
-    pointsLCS = map(self._mapFromDeviceToLocal, pointsVCS)
+    pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsVCS())
+    print "appendSegment", pointsLCS
     self.appendInternalRepr(path, pointsLCS)
     
   
@@ -390,7 +398,7 @@ class SegmentString(QGraphicsPathItem):
     Used for example to approximately graphics pick a segment.
     '''
     for index in self._segmentIndexGenerator():
-      segmentPoints = self._pointsLCSInPathForSegment(self.path(), index)
+      segmentPoints = self._pointsLCSInPathForSegment(self.myPath(), index)
       # First and last points are start and end
       yield segmentPoints[0], segmentPoints[3]
       

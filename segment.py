@@ -35,6 +35,8 @@ class Segment(object):
   - know relations between ControlPoints and order them
   - know endPoint and whether a ControlPoint is that endPoint
   - relay controlPointChanged
+  
+  !!! Coords in View CS
   '''
   
   def __init__(self):
@@ -47,8 +49,18 @@ class Segment(object):
   def __repr__(self):
     return ','.join([str(controlPoint.getCoordinate()) for controlPoint in self.controlPoints])
 
+
+  def isNull(self):
+    ''' 
+    Is segment in fact a point, a segment of zero length? 
+    Float equality a problem?
+    '''
+    result = self.controlPoints[0] == self.controlPoints[3]
+    # print "isNull", result
+    return result
   
-  def asPoints(self):
+  
+  def asPointsVCS(self):
     '''
     Representation as tuple of coordinates of self ControlPoints.
     

@@ -307,17 +307,26 @@ class FreehandTool(QObject):
     self.pathHeadGhost.hide()
     
     '''
-    CurveGenerator only finally draws to midpoint of current PathLine.
+    CurveGenerator only finally draws:
+    - to midpoint of current PathLine.
+    - OR for a cusp, current PathLine is nullLine (generated MidToEnd)
+    
     Add final element to path, a LinePathElement from midpoint to current PointerPosition.
     Note path already ends at the midpoint, don't need to "return" it from close()
     (and close() CANNOT return a value.)
     
-    If last generated MidToEnd, we might not need this,
-    but that might leave end of PointerTrack one pixel off.
+    TODO are we sure not leaving PointerTrack one pixel off?
     '''
     #TODO straight line is crude, should generate a curve
-    self.path.appendSegments( [LineSegment(self.path.getEndPoint(), pointerEvent.viewPos)],
-                             segmentCuspness=[False])
+    
+    '''
+    ??? Preferable to check that current PathLine is not equal to nullLine()?
+    Since that might avoid problems with float equality in isNull()
+    '''
+    finalLineSegment = LineSegment(self.path.getEndPointVCS(), pointerEvent.viewPos)
+    if not finalLineSegment.isNull():
+      self.path.appendSegments( [finalLineSegment], segmentCuspness=[False])
+      
     print "Final segment count", self.path.countSegments()
     
   
@@ -376,11 +385,12 @@ class FreehandTool(QObject):
         else: # path is still on an axis: wait
           pass
     finally:
+      print "Closing turn generator"
       # assert position is defined
       if previousPosition != position:
         ''' Have position not sent. Fabricate a turn (equal to position) and send() '''
         self.lineGenerator.send((position, 0))
-      print "Closing turn generator"
+      print "Closed turn generator"
     
     
   def LineGenerator(self, startPosition):
@@ -427,10 +437,12 @@ class FreehandTool(QObject):
       print "Exception in LineGenerator"
       traceback.print_exc()
     finally:
-      if previousTurn != startTurn:
-        ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
-        self.curveGenerator.send((QLineF(startTurn, previousTurn), 0))
       print "closing line generator"
+      if previousTurn != startTurn:
+        print "Closing line generator, startTurn, previousTurn", startTurn, previousTurn
+        ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
+        self.curveGenerator.send((QLineF(startTurn, previousTurn), False))
+      print "closed line generator"
     
         
   
@@ -464,6 +476,7 @@ class FreehandTool(QObject):
       # Unexpected programming errors, which are obscured unless caught
       print "Exception in CurveGenerator"
       traceback.print_exc()
+      raise
     finally:
       ''' 
       Last drawn element stopped at midpoint of PathLine.
@@ -474,7 +487,7 @@ class FreehandTool(QObject):
       GeneratorExit exception is still in effect after finally, but caller does not see it,
       and Python does NOT allow it to return a value.
       '''
-      print "closing curve generator"
+      print "closed curve generator"
 
   
   
@@ -660,7 +673,7 @@ class FreehandTool(QObject):
     and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    return [LineSegment(self.path.getEndPoint(), cuspPoint), 
+    return [LineSegment(self.path.getEndPointVCS(), cuspPoint), 
             LineSegment(cuspPoint, endPoint)], endPoint, [True, False]  # First segment is cusp
   
   
