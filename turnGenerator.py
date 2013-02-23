@@ -21,7 +21,13 @@ class TurnGeneratorMixin(object):
    
     Qt doesn't have event.time . Fabricate it here.  X11 has event.time.
     '''
-    position = None   # if events are: send(None), close(), need this defined
+    
+    '''
+    position must be defined not None since close() may come before the first send()
+    (and position is referenced in GeneratorExit handler)
+    for example if user just clicks pointer without moving it.
+    '''
+    position = startPosition
     previousPosition = startPosition
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()

@@ -231,7 +231,7 @@ class SegmentString(QGraphicsPathItem):
   def _pointVCSForPathElement(self, element):
     '''
     Return  QPointF in VCS for QPathElements.
-    QPathElements don't have x(); calling it gives symptom "Exception: reverse not implemented"
+    QPathElements don't have x(); calling it gives symptom "Exception: reverse operator not implemented"
     
     Also map from Local CS (of the QGraphicsItem) to View CS (of the tool)
     '''
@@ -311,8 +311,8 @@ class SegmentString(QGraphicsPathItem):
     self.setPath(pathCopy)
     
     # ensure
-    assert self.countSegments() == previousSegmentCount + len(segments), ','.join((str(previousSegmentCount), str(len(segments)), str(self.countSegments())))
-    # No need to invalidate or update display, at least for Qt
+    assert self.countSegments() == previousSegmentCount + len(segments), str(segments[0])
+    ## ','.join((str(previousSegmentCount), str(len(segments)), str(self.countSegments())))
     
     # TEST try to alter the path: has no effect, QPathElements are constants??
     #pathCopy.elementAt(1).x += 20

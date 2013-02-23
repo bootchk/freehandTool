@@ -117,7 +117,12 @@ class LineGeneratorMixin(object):
     else:
     '''
     # Vector from startTurn, via many turns, to currentTurn
-    vectorViaAllTurns = currentTurn - startTurn
+    try:
+      vectorViaAllTurns = currentTurn - startTurn
+    except:
+      print type(currentTurn), type(startTurn)
+      raise
+      
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
       # print "Constraint violation", constraints, "vector", vectorViaAllTurns
       result = self._interpolateConstraintViolating(startTurn=startTurn,
