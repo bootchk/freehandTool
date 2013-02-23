@@ -266,6 +266,7 @@ class SegmentString(QGraphicsPathItem):
     !!! and cubicTo has 3 points of Segment's 4 points.
     '''
     assert len(pointsLCS) == SegmentString.ELEMENTS_PER_SEGMENT
+    # print "appendInternalRep", pointsLCS
     path.cubicTo(*pointsLCS[1:])
   
   
@@ -293,26 +294,35 @@ class SegmentString(QGraphicsPathItem):
     If for any reason a segment IS null, Qt quietly omits it from QPainterPath.
     And then segmentCuspness is not one-to-one with segments.
     '''
-    previousSegmentCount = self.countSegments()
     assert len(segments) > 0
 
-    
-    # copy current path
     pathCopy = self.myPath()
     inSegmentOrdinal = 0
+    previousSegmentCount = self.countSegments()
     for segment in segments:
       self._appendSegmentToPath(segment, pathCopy)
-      if segmentCuspness[inSegmentOrdinal]:
-        # !!! Store cuspness indexed by segment ordinal, NOT index
-        self.cuspness.setCuspness(self.countSegments() - 1)
+      newSegmentCount = self.countSegments()
+      if  newSegmentCount == previousSegmentCount + 1 :
+        # was effective, remember cuspness
+        if segmentCuspness[inSegmentOrdinal]:
+          # !!! Store cuspness indexed by segment ordinal, NOT index
+          self.cuspness.setCuspness(self.countSegments() - 1)
+      else:
+        '''
+        SegmentString refused a Null segment (after coordinate conversion.)
+        It doesn't matter visually, or to the generators.
+        '''
+        pass
+      previousSegmentCount = newSegmentCount
       inSegmentOrdinal += 1
       
     # !!! pathCopy is NOT an alias for self.myPath() now, they differ.  Hence:
     self.setPath(pathCopy)
     
-    # ensure
-    assert self.countSegments() == previousSegmentCount + len(segments), str(segments[0])
-    ## ','.join((str(previousSegmentCount), str(len(segments)), str(self.countSegments())))
+    '''
+    NOT ensure self.countSegments() == previousSegmentCount + len(segments)
+		since SegmentString may have refused to append a segment.
+		'''
     
     # TEST try to alter the path: has no effect, QPathElements are constants??
     #pathCopy.elementAt(1).x += 20
@@ -321,14 +331,21 @@ class SegmentString(QGraphicsPathItem):
 
   def _appendSegmentToPath(self, segment, path):
     ''' 
-    Append given Segment instance to path.
+    Append Segment instance to path, converting to Local CS.
+    
+    assert Segment in VCS !!!
+    Not assert Segment coordinates are integers, since freehand works in float.
+    assert not segment.isNull(), provable since Segment constructor methods have this assertion.
     '''
-    # assert Segment in VCS !!!
-    assert not segment.isNull(), "Segment null: " + str(segment)
     
     # !!! Python map() and Qt 'map' meaning transform between coordinate systems
     pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsVCS())
-    # print "appendSegment", pointsLCS
+    
+    '''
+    !!! Now the segment might be null, due to floating point errors.
+    So this may not be effective: may not append anything.
+    If caller requires effectiveness, caller must check that path is increased.
+    '''
     self.appendInternalRepr(path, pointsLCS)
     
   
@@ -354,6 +371,11 @@ class SegmentString(QGraphicsPathItem):
     Wierdness: Qt docs not show constructor QPainterPath(QPainterPathElement) 
     but QPainterPathElement is duck-typed to QPointF.
     '''
+
+    # !!! TODO check that appending is effective.
+    # The updated segment may be null to its predecessor or successor.
+    # Then cuspness is whack
+
     newPath = QPainterPath(self.getStartPointLCS())  # self.myPath().elementAt(0))
     for segmentIndex in self._segmentIndexGenerator():
       if segmentIndex == indexOfSegmentInString:

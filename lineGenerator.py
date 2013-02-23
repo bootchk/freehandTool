@@ -66,7 +66,8 @@ class LineGeneratorMixin(object):
     except GeneratorExit:
       print "closing line generator"
       if previousTurn != startTurn:
-        print "Closing line generator, startTurn, previousTurn", startTurn, previousTurn
+        print "closing line generator"
+        #print "startTurn, previousTurn", startTurn, previousTurn
         ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
         self.curveGenerator.send((QLineF(startTurn, previousTurn), False))
       print "closed line generator"
@@ -117,11 +118,7 @@ class LineGeneratorMixin(object):
     else:
     '''
     # Vector from startTurn, via many turns, to currentTurn
-    try:
-      vectorViaAllTurns = currentTurn - startTurn
-    except:
-      print type(currentTurn), type(startTurn)
-      raise
+    vectorViaAllTurns = currentTurn - startTurn
       
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
       # print "Constraint violation", constraints, "vector", vectorViaAllTurns
