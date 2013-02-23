@@ -42,6 +42,8 @@ Cuspness is populated as a SegmentString is created.
 Coordinate systems
 ==================
 
+Coordinates of incoming segments in View CS.
+Segments stored internally in Local CS of QGraphicsPathItem.
 
 
 FIXME:
