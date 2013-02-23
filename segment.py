@@ -42,7 +42,7 @@ class Segment(object):
   def __init__(self):
     self.parentString = None
     self.indexOfSegmentInString = None
-    # Every segment has FOUR ControlPoints
+    # Every segment has FOUR ControlPoints.  These are empty ControlPoints until subclass fills them.
     self.controlPoints = [ControlPoint(self, 0), ControlPoint(self, 1), ControlPoint(self, 2), ControlPoint(self, 3)]
     
     
@@ -123,6 +123,9 @@ class LineSegment(Segment):
   '''
   def __init__(self, startPoint, endPoint):
     super(LineSegment, self).__init__()
+    
+    assert startPoint != endPoint, "No segment is Null"
+    
     # Set coordinates of anchor ControlPoints, at ends
     self.controlPoints[0].setCoordinate(startPoint)
     self.controlPoints[3].setCoordinate(endPoint)
@@ -149,6 +152,9 @@ class CurveSegment(Segment):
   '''
   def __init__(self, startPoint, controlPoint1, controlPoint2, endPoint):
     super(CurveSegment, self).__init__()
+    
+    assert startPoint != endPoint, "No segment is Null"
+    
     # Anchor ControlPoints, at ends
     self.controlPoints[0].setCoordinate(startPoint)
     self.controlPoints[3].setCoordinate(endPoint)

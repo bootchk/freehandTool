@@ -284,7 +284,16 @@ class SegmentString(QGraphicsPathItem):
     FUTURE might be faster to union existing path with new path.
     '''
     ##print "Append segments", segments
+    
+    '''
+    For robustness, check this call is effective.
+    assert no segment is null (checked by Segment __init__() )
+    If for any reason a segment IS null, Qt quietly omits it from QPainterPath.
+    And then segmentCuspness is not one-to-one with segments.
+    '''
     previousSegmentCount = self.countSegments()
+    assert len(segments) > 0
+
     
     # copy current path
     pathCopy = self.myPath()
@@ -313,11 +322,11 @@ class SegmentString(QGraphicsPathItem):
     Append given Segment instance to path.
     '''
     # assert Segment in VCS !!!
-    assert not segment.isNull(), str(segment)
+    assert not segment.isNull(), "Segment null: " + str(segment)
     
     # !!! Python map() and Qt 'map' meaning transform between coordinate systems
     pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsVCS())
-    print "appendSegment", pointsLCS
+    # print "appendSegment", pointsLCS
     self.appendInternalRepr(path, pointsLCS)
     
   

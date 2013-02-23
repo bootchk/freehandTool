@@ -105,13 +105,34 @@ But a slow diagonal generates many PathTurns, which should not generate a cusp.
 
 Ghosting
 =======
-Since the pipeline lags, ghost a straight LinePathElement from last output of pipeline to current PointerPosition.
+Since the pipeline lags, ghost a graphic item from last output of pipeline to current PointerPosition.
 Otherwise, the drawn graphic separates from the pointer.
+
+Currently ghosting with a straight LinePathElement.
+TODO Better to ghost with a pixmap of the pointer track, OR a crude curve (to be refined later.)
 
 Closing the pipeline
 ====================
 Since the pipeline lags, there is code to shut down the pipeline, generating final graphics to current
 PointerPosition.
+
+Currently final generated graphic is just a straight line.
+TODO better to fit a curve.
+
+Null segments
+=============
+Early versions generated null segments.  
+Null segments added to a QPainterPath have no effect.
+The resulting SegmentString seems OK and the algorithm seems robust.
+
+Later versions don't generate null segments.  
+An assertion checks that a segment added to a QPainterPath has an effect.
+Although it is more code, it is better because it reveals certain situations that
+can be handled better, yielding better SegmentString (by a few pixels?)
+It is really not a matter of performance:
+whether you spend more time discovering null segments,
+or whether you call Qt to append a null segment that has no effect,
+probably takes the same amount of time.
 
 
 FUTURE
@@ -263,11 +284,17 @@ class FreehandTool(QObject):
     self.curveGenerator = self.CurveGenerator(nullLine(startPosition))
     self.curveGenerator.send(None) 
   
+  
   def closeFilterPipe(self):
     '''
     Close generators. 
     They will finally generate SOME of final objects (i.e. turn, PathLine) to current PointerPosition.
     Assume we already received a pointerMoveEvent at same coords of pointerReleaseEvent.
+    
+    close() is a built-in method of generators.
+    
+    Closing a generator may cause it to yield, and thus invoke downstream generators in the pipeline.
+    Close generators in their order in the pipeline.
     '''
     if self.turnGenerator is not None:  # Ignore race condition: pointerRelease without prior pointerPress
       self.turnGenerator.close()
@@ -278,18 +305,19 @@ class FreehandTool(QObject):
 
   def pointerMoveEvent(self, pointerEvent):
     ''' Feed pointerMoveEvent into a pipe. '''
-    try:
-      # Generate if pointer button down
-      if self.turnGenerator is not None:
+    # Generate if flag indicates pointer button down
+    if self.turnGenerator is not None:
+      try:
         self.turnGenerator.send(pointerEvent.viewPos)  # Feed pipe
+      except StopIteration:
+        '''
+        While user is moving pointer with pointer button down, we don't expect pipe to stop.
+        If programming error stops pipe, quit app so we can see error trace.
+        '''
+        print "Abnormal pointerMoveEvent, exiting"
+        sys.exit()
+      else:
         self.pathHeadGhost.updateEnd(pointerEvent.scenePos)
-    except StopIteration:
-      '''
-      While user is moving pointer, we don't expect pipe to stop.
-      If programming error stops pipe, quit app so we can see error trace.
-      '''
-      print "Abnormal pointerMoveEvent, exiting"
-      sys.exit()
   
   
   def pointerPressEvent(self, pointerEvent):
@@ -298,14 +326,16 @@ class FreehandTool(QObject):
     '''
     self.initFilterPipe(pointerEvent.viewPos)
 
-    
-    
   
   def pointerReleaseEvent(self, pointerEvent):
     ''' User has ended freehand drawing. '''
     self.closeFilterPipe()
     self.pathHeadGhost.hide()
-    
+    self._createFinalSegment(pointerEvent)
+    print "Final segment count", self.path.countSegments()
+  
+  
+  def _createFinalSegment(self, pointerEvent):
     '''
     CurveGenerator only finally draws:
     - to midpoint of current PathLine.
@@ -316,19 +346,17 @@ class FreehandTool(QObject):
     (and close() CANNOT return a value.)
     
     TODO are we sure not leaving PointerTrack one pixel off?
+    TODO straight line is crude, should generate a curve
     '''
-    #TODO straight line is crude, should generate a curve
     
-    '''
-    ??? Preferable to check that current PathLine is not equal to nullLine()?
-    Since that might avoid problems with float equality in isNull()
-    '''
-    finalLineSegment = LineSegment(self.path.getEndPointVCS(), pointerEvent.viewPos)
-    if not finalLineSegment.isNull():
+    currenPathEnd = self.path.getEndPointVCS()
+    currentPointerPos = pointerEvent.viewPos
+    # Only create final segment if pointer was NOT released at exact end of current path 
+    # For example when ending on a timed cusp??
+    if currenPathEnd != currentPointerPos:
+      finalLineSegment = LineSegment(startPoint=currenPathEnd, endPoint=currentPointerPos)
       self.path.appendSegments( [finalLineSegment], segmentCuspness=[False])
-      
-    print "Final segment count", self.path.countSegments()
-    
+  
   
   def keyPressEvent(self, event):
     ''' 
@@ -469,13 +497,16 @@ class FreehandTool(QObject):
           ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
           segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(previousLine, line)
           previousLine = nullLine(pathEndPoint) # !!! next element from midpoint of nullLine
+          self.path.appendSegments(segments, segmentCuspness=cuspness)
         else:
           ''' Fit to path, possibly a cusp. '''
           segments, pathEndPoint, cuspness = self.segmentsFromLineMidToMid(previousLine, line)  
           # segments = nullcurveFromLines(previousLine, line) # TEST
           previousLine = line  # Roll forward
+          # don't migrate the following and the one above, we want distinct traceback on errors
+          self.path.appendSegments(segments, segmentCuspness=cuspness)
+          
         
-        self.path.appendSegments(segments, segmentCuspness=cuspness) # add segment to existing PointerTrack path
         
         self.pathHeadGhost.updateStart(pathEndPoint)
        
@@ -504,7 +535,14 @@ class FreehandTool(QObject):
   '''
   
   def detectTurn(self, position1, position2):
-    ''' Return position2 if it turns, i.e. if not on horiz or vert axis with position1, else return None. '''
+    ''' 
+    Return position2 if it turns, i.e. if not on horiz or vert axis with position1, else return None. 
+    
+    !!! A diagonal pointer track that reverses (returns from whence it came) generates turns.
+    That is, turns are not just left or right, but also reversal.
+    
+    !!! A horizontal or vertical track that reverses does not generate a turn.
+    '''
     if        position1.x() != position2.x() \
           and position1.y() != position2.y()   :
       #print "Turn", position2
@@ -594,8 +632,15 @@ class FreehandTool(QObject):
     Note this is a PathLine, not a LinePathElement.
     '''
     constraints.__init__()
-    ## print "Force PathLine", startTurn, currentTurn
-    return QLineF(startTurn, currentTurn)
+    
+    if startTurn == currentTurn:
+      ''' A reversal. A line from start to current would be Null. '''
+      print "Reversal"
+      assert previousTurn != startTurn
+      return QLineF(startTurn, previousTurn)
+    else:
+      ## print "Force PathLine", startTurn, currentTurn
+      return QLineF(startTurn, currentTurn)
     
     
     
