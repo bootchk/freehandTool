@@ -34,6 +34,7 @@ class CurveGeneratorMixin(object):
     try:
       while True:
         line, isLineForced = (yield)
+        assert isinstance(line, QLineF), "input is a PathLine"
         if isLineForced:
           ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
           segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(previousLine, line)

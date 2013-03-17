@@ -15,9 +15,10 @@ class LineGeneratorMixin(object):
   
   def LineGenerator(self, startPosition):
     '''
-    Takes pointer turn on explicit call to send().
-    Consumes turns until pixels of PointerPath cannot be approximated by (impinged upon by) one vector.
-    Generates vectors on integer plane (grid), not necessarily axial, roughly speaking: diagonals.
+    Generate PathLine sequence from Turn sequence.
+    Takes pointer Turn on explicit call to send().
+    Consumes Turns until pixels of PointerPath cannot be approximated by (impinged upon by) one vector.
+    Generates PathLines (vectors on integer plane (grid)), not necessarily axial, roughly speaking: diagonals.
     
     Note structure of this filter differs from others:
     - uses three turns (input objects): start, previous, and current.
