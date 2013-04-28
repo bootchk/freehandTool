@@ -62,10 +62,13 @@ from segment import CurveSegment
 from relations import Relations
 from segmentActions import segmentStringActions
 from cuspness import Cuspness
-from alternatePaintingQGPI import AlternateColorPaintingQGPI
+
 
   
-# For testing use: class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
+## For testing use: 
+##from alternatePaintingQGPI import AlternateColorPaintingQGPI
+##class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
+
 class SegmentString(QGraphicsPathItem):
   '''
   GraphicsItem that is a sequence of Segments.
