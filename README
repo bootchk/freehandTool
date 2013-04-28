@@ -8,10 +8,14 @@
 ========
 
 A freehand drawing tool.
-Input: pointer device (e.g. mouse) events.
-Output: graphic vector path (lines and splines) which a GUI toolkit renders.
-Not a complete app, mostly the model component.
+Where a tool is a user interface object, something a user uses.
+A freehand drawing tool is a component of a vector graphics drawing app.
+
+Input: pointer device (e.g. mouse) events, from the app
+Output: graphic vector path (lines and splines) which the app (via a GUI toolkit) renders.
+
 Includes a rudimentary GUI app for testing (draw with LMB, distort with key or Ctl-key)
+
 Written in pure Python.
 Emphasis on domain objects and class/responsibility/collaboration documentation.
 
@@ -31,7 +35,7 @@ See much more technical discussion in the code.
 
 
 2. Version 0.0.2
-==============
+================
 
 SegmentString, Segment, ControlPoint classes.
 Explicitly model the abstractions of a SegmentString.
@@ -41,7 +45,7 @@ Demonstrates editing a SegmentString by manipulation of its ControlPoints.
 
 
 3. Version 0.0.3
-========================
+================
 
 - Relations between ControlPoints defines actions (behavior of user manipulations.)
 - Cusps known by SegmentString 
@@ -79,5 +83,20 @@ A key with control key also down modifies said control point while maintaining c
 
 A real app would have an alternate user interface for editing (dragging?) control points.
 
+7.  Installing
+==============
+
+If you clone the git repository, you can change directory to the project directory and simply execute freehandApp.py.
+
+It is not useful to install as a Python package in the standard place, 
+unless you have written your own app that uses the freehand tool.  
+In that case, the setup.py scripts are in the project.
+You should produce a distribution archive (>python setup.py sdist),
+copy and upack the archive somewhere else,
+cd to that directory,
+and install it (>python setup.py install).
+(The archive in the repository at dist/freehandTool-0.1.tar.gz
+is only the tool and not the demo app,
+and the archive may not be up to date.)
 
 
