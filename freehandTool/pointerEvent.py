@@ -7,6 +7,10 @@ from PySide.QtGui import QGraphicsView
 class PointerEvent(object):
   '''
   Packet of data about a graphics pointing device event.
+  
+  Passed from app to freehand tool.
+  
+  Augments raw framework event with scene coordinates, and float view coordinates (from int pixel coords.)
   '''
   
   def __init__(self):

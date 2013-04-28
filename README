@@ -30,7 +30,7 @@ References:
 See much more technical discussion in the code.
 
 
-2. Version 2.0
+2. Version 0.0.2
 ==============
 
 SegmentString, Segment, ControlPoint classes.
@@ -40,7 +40,7 @@ Demonstrates editing a SegmentString by manipulation of its ControlPoints.
 (Although editing is not graphical, just crude demo via keystrokes.)
 
 
-3. Version 3.0
+3. Version 0.0.3
 ========================
 
 - Relations between ControlPoints defines actions (behavior of user manipulations.)
@@ -54,4 +54,30 @@ Demonstrates editing a SegmentString by manipulation of its ControlPoints.
 TODO
 Calculate cuspness geometrically.
 Cuspness is not currently serializable/deserializable, only exists just after SegmentString creation.
+
+
+5. Directory structure and distribution
+=======================================
+The top directory freehandTool includes a demo app, freehandApp.py.
+It also include other distribution artifacts e.g. setup.py.
+
+The directory freehandTool.freehandTool is the main Python package of the tool.
+In that package, freehand.py is the main program for the tool.
+Also in the package are pointerEvent.py and ghostLine, glue between the tool and the app.
+
+The directory freehandTool.freehandTool.generator is a Python package that the tool calls (the low-level implementation.)
+
+The Python distribution (a zipped archive) includes only the package freehandTool.freehandTool and subpackages,
+but not the demo app.
+
+6. The demo app
+===============
+
+Draw with the mouse left button down.
+Any key modifies an arbitrary control point (the second one?)
+A key with control key also down modifies said control point while maintaining cuspness.
+
+A real app would have an alternate user interface for editing (dragging?) control points.
+
+
 

@@ -205,10 +205,10 @@ import sys
 from PySide.QtCore import QPointF, Qt
 from PySide.QtCore import QObject
 
-from segment import LineSegment
-from turnGenerator import TurnGeneratorMixin
-from lineGenerator import LineGeneratorMixin
-from curveGenerator import CurveGeneratorMixin
+from generator.segment import LineSegment
+from generator.turnGenerator import TurnGeneratorMixin
+from generator.lineGenerator import LineGeneratorMixin
+from generator.curveGenerator import CurveGeneratorMixin
 
 
 
@@ -229,7 +229,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     
     # Tool operates on these, but they are None until setSegmentString
     self.pathHeadGhost = None
-    self.path = None  
+    self.path = None
     
     
   def setSegmentString(self, segmentString, pathHeadGhost, scenePosition):

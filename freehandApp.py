@@ -13,10 +13,10 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 import sys
 
-from pointerEvent import PointerEvent
-from freehand import FreehandTool
-from ghostLine import PointerTrackGhost
-from segmentString import SegmentString
+from freehandTool.pointerEvent import PointerEvent
+from freehandTool.freehand import FreehandTool
+from freehandTool.ghostLine import PointerTrackGhost
+from freehandTool.generator.segmentString import SegmentString
 
 
 class DiagramScene(QGraphicsScene):
