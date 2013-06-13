@@ -15,7 +15,8 @@ import sys
 
 from freehandTool.pointerEvent import PointerEvent
 from freehandTool.freehand import FreehandTool
-from freehandTool.ghostLine import PointerTrackGhost
+# from freehandTool.ghostLine import PointerTrackGhost
+from freehandTool.freehandHead import PointerTrackGhost
 from freehandTool.generator.segmentString import SegmentString
 
 

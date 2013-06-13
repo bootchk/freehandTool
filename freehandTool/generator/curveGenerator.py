@@ -154,8 +154,9 @@ class CurveGeneratorMixin(object):
     and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    return [LineSegment(self.path.getEndPointVCS(), cuspPoint), 
-            LineSegment(cuspPoint, endPoint)], endPoint, [True, False]  # First segment is cusp
+    firstSegment = LineSegment(self.path.getEndPointVCS(), cuspPoint)
+    secondSegment = LineSegment(cuspPoint, endPoint)
+    return [firstSegment, secondSegment], endPoint, [True, False]  # First segment is cusp
   
   
 

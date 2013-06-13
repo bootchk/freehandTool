@@ -23,7 +23,8 @@ class PointerTrackGhost(QGraphicsLineItem):
   Finally replaced by a path segment.
   Hidden when user not using freehand tool.
   
-  Implementation: extent QGraphicsLineItem
+  Implementation: extend QGraphicsLineItem.
+  See alternate implementation: freehandHead.py
   
   This presents a simplified API to FreehandTool,
   to reduce coupling between FreehandTool and Qt.
