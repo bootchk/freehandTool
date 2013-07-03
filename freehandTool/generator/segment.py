@@ -17,6 +17,8 @@ This is a UI design decision.
 '''
 
 from controlPoint import ControlPoint
+from ..exception import FreehandNullSegmentError
+
 
 # Relation IDs
 TIED_TO = 1
@@ -39,11 +41,15 @@ class Segment(object):
   !!! Coords in View CS
   '''
   
-  def __init__(self):
+  def __init__(self, startPoint, endPoint):
     self.parentString = None
     self.indexOfSegmentInString = None
     # Every segment has FOUR ControlPoints.  These are empty ControlPoints until subclass fills them.
     self.controlPoints = [ControlPoint(self, 0), ControlPoint(self, 1), ControlPoint(self, 2), ControlPoint(self, 3)]
+    
+    # comparing floats, but no need for a near() comparison
+    if startPoint == endPoint:
+      raise FreehandNullSegmentError
     
     
   def __repr__(self):
@@ -122,9 +128,7 @@ class LineSegment(Segment):
   (where none are mathematically needed to represent a straight line.)
   '''
   def __init__(self, startPoint, endPoint):
-    super(LineSegment, self).__init__()
-    
-    assert startPoint != endPoint, "No segment is Null"
+    super(LineSegment, self).__init__(startPoint, endPoint)
     
     # Set coordinates of anchor ControlPoints, at ends
     self.controlPoints[0].setCoordinate(startPoint)
@@ -144,6 +148,7 @@ class LineSegment(Segment):
     return startPoint + (endPoint - startPoint) / 2
 
 
+
 class CurveSegment(Segment):
   '''
   Curve specialization of Segment.
@@ -151,9 +156,7 @@ class CurveSegment(Segment):
   All control points must be passed.
   '''
   def __init__(self, startPoint, controlPoint1, controlPoint2, endPoint):
-    super(CurveSegment, self).__init__()
-    
-    assert startPoint != endPoint, "No segment is Null"
+    super(CurveSegment, self).__init__(startPoint, endPoint)
     
     # Anchor ControlPoints, at ends
     self.controlPoints[0].setCoordinate(startPoint)

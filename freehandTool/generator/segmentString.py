@@ -294,10 +294,11 @@ class SegmentString(QGraphicsPathItem):
     '''
     For robustness, check this call is effective.
     assert no segment is null (checked by Segment __init__() )
-    If for any reason a segment IS null, Qt quietly omits it from QPainterPath.
+    If for any reason a null segment is passed to Qt, Qt quietly omits it from QPainterPath.
     And then segmentCuspness is not one-to-one with segments.
     '''
-    assert len(segments) > 0
+    if len(segments) <= 0:
+      return
 
     pathCopy = self.myPath()
     inSegmentOrdinal = 0
