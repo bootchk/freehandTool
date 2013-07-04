@@ -2,7 +2,7 @@
 '''
 
 
-from PySide.QtCore import QEvent, QPointF
+from PySide.QtCore import QEvent, QPointF, QPoint
 from PySide.QtGui import QGraphicsView
 from .type.pointerPoint import PointerPoint
 
@@ -28,9 +28,10 @@ class PointerEvent(object):
     # !!! Do NOT convert event coords from int to float, until later
     self.viewPos = PointerPoint(event.x(), event.y())
     
-    
+  
+  
   def makeFromPoints(self, scenePoint, viewPoint):
     assert isinstance(scenePoint, QPointF)
-    assert isinstance(viewPoint, QPoint)
+    assert isinstance(viewPoint, QPoint), str(viewPoint)
     self.scenePos = scenePoint
-    self.viewPos = viewPoint
+    self.viewPos = PointerPoint(viewPoint.x(), viewPoint.y())
