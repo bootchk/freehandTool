@@ -85,7 +85,11 @@ class GraphicsView(QGraphicsView):
   
   
   def keyPressEvent(self, event):
-    self.freehandTool.keyPressEvent(event)
+    if event.modifiers() & Qt.ControlModifier:
+      alternateMode = True
+    else:
+      alternateMode = False
+    self.freehandTool.testControlPoint(event, alternateMode)
     
   
       

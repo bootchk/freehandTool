@@ -56,7 +56,7 @@ Cuspness deserialized.
 '''
 
 from PySide.QtGui import QGraphicsPathItem, QPainterPath
-from PySide.QtCore import QPointF, QPoint
+from PySide.QtCore import QPointF
 
 from segment import CurveSegment
 from relations import Relations
@@ -242,9 +242,21 @@ class SegmentString(QGraphicsPathItem):
   
   
   '''
-  Responsibility: 7. map between representations
+  Responsibility: 7. map between frames (coordinate systems)
+  
+  Self is a QGraphicsItem which knows how to map from Local to Scene.
   '''
-  """ Not used
+  def _mapFromSceneToLocal(self, pointSCS):
+    return self.mapFromScene(pointSCS)
+  
+  def _mapFromLocalToScene(self, pointLCS):
+    return self.mapToScene(pointLCS)
+    
+    
+    
+  """ 
+  Not used CRUFT from before int/float and View/Scene/Local CS were fixed.
+  
   def _pointVCSForPathElement(self, element):
     '''
     Return  QPointF in VCS for QPathElements.
@@ -253,11 +265,6 @@ class SegmentString(QGraphicsPathItem):
     Also map from Local CS (of the QGraphicsItem) to View CS (of the tool)
     '''
     return self._mapFromLocalToDevice(self._unmappedPointForPathElement(element))
-  """
-  
-  def _unmappedPointForPathElement(self, element):
-    ''' Point in LCS for element. '''
-    return QPointF(element.x, element.y)
   
   def _mapFromLocalToDevice(self, pointLCS):
     pointSCS = self.mapToScene(pointLCS)
@@ -265,8 +272,6 @@ class SegmentString(QGraphicsPathItem):
     intPointVCS = self.scene().views()[0].mapFromScene(pointSCS)
     return QPointF(intPointVCS)
   
-  """
-  Unused
   def _mapFromDeviceToLocal(self, pointVCS):
     '''
     Map from freehandTool internal coordinate in View CS float
@@ -277,11 +282,6 @@ class SegmentString(QGraphicsPathItem):
     pointSCS = self.scene().views()[0].mapToScene(intPointVCS)
     return self.mapFromScene(pointSCS)
   """
-  
-  def _mapFromSceneToLocal(self, pointSCS):
-    return self.mapFromScene(pointSCS)
-    
-    
   
 
   
@@ -306,10 +306,11 @@ class SegmentString(QGraphicsPathItem):
     '''
     For robustness, check this call is effective.
     assert no segment is null (checked by Segment __init__() )
-    If for any reason a segment IS null, Qt quietly omits it from QPainterPath.
+    If for any reason a null segment is passed to Qt, Qt quietly omits it from QPainterPath.
     And then segmentCuspness is not one-to-one with segments.
     '''
-    assert len(segments) > 0
+    if len(segments) <= 0:
+      return
 
     pathCopy = self.myPath()
     inSegmentOrdinal = 0
@@ -481,8 +482,12 @@ class SegmentString(QGraphicsPathItem):
       result.append(self._unmappedPointForPathElement(element = path.elementAt(segmentIndex + i)))
     return result
     
-  def _pointsVCSInPathForSegment(self, path, segmentIndex):
-    return map(self._mapFromLocalToDevice, self._pointsLCSInPathForSegment(path, segmentIndex))
+  def _unmappedPointForPathElement(self, element):
+    ''' Point in LCS for element. '''
+    return QPointF(element.x, element.y)
+  
+  def _pointsSCSInPathForSegment(self, path, segmentIndex):
+    return map(self._mapFromLocalToScene, self._pointsLCSInPathForSegment(path, segmentIndex))
   
     
   '''
@@ -510,7 +515,6 @@ class SegmentString(QGraphicsPathItem):
       previousEndControlPoint = segment.getEndControlPoint()
     self.controlPointSet = result # Remember my own ControlPoint set
     # FIXME: above does NOT allow for many views of same SegmentString
-    # FIXME: in VCS??
     return result
   
   
@@ -526,12 +530,11 @@ class SegmentString(QGraphicsPathItem):
     assert segmentIndex >= 0 and segmentIndex <= self._indexOfLastSegment()
     assert self.countSegments() > 0
     
-    pointsFromPath = self._pointsVCSInPathForSegment(self.myPath(), segmentIndex)
-    # assert points are VCS
+    pointsFromPath = self._pointsSCSInPathForSegment(self.myPath(), segmentIndex)
+    # assert points are Scene CS
     segment = CurveSegment(*pointsFromPath)
     # assert ControlPoints were created and refer to segment
     segment.setIndexInString(parentString=self, indexOfSegmentInString = segmentIndex)
-    # ensure in VCS.  FIXME should be LCS?
     return segment
   
   

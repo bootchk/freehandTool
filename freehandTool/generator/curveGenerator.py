@@ -10,7 +10,7 @@ from segment import LineSegment, CurveSegment
 from ..type.pathLine import PathLine
 from ..type.freehandPoint import FreehandPoint
 from ..type.pointerPoint import PointerPoint
-
+from ..exception import FreehandNullSegmentError
 
 
 
@@ -161,10 +161,32 @@ class CurveGeneratorMixin(object):
     and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    # !!! Here is where we use cache
-    firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
-    secondSegment = LineSegment(cuspPoint, endPoint)
-    return [firstSegment, secondSegment], endPoint, [True, False]  # First segment is cusp
+    try:
+      # !!! Here is where we use cache
+      firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
+    except FreehandNullSegmentError:
+      print "??? First segment null in segmentsForCusp"
+      try:
+        secondSegment = LineSegment(cuspPoint, endPoint)
+      except FreehandNullSegmentError:
+        print "??? Both segments null in segmentsForCusp"
+        result = [], endPoint, []
+      else:
+        # Only secondSegment is not null
+        result = [secondSegment,], endPoint, [False,]
+    else:
+      try:
+        secondSegment = LineSegment(cuspPoint, endPoint)
+      except FreehandNullSegmentError:
+        print "??? Second segment null in segmentsForCusp"
+        result = [firstSegment,], endPoint, [False,]
+      else:
+        # Normal case
+        result = [firstSegment, secondSegment], endPoint, [True, False]  # First segment is cusp
+    
+    # !!! Not ensure that result is non-empty list
+    # assert that any segments are not null, and len of segment list == len of cuspness list
+    return result
   
   
   
