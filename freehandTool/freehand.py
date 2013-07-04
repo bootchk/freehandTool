@@ -209,6 +209,8 @@ from generator.segment import LineSegment
 from generator.turnGenerator import TurnGeneratorMixin
 from generator.lineGenerator import LineGeneratorMixin
 from generator.curveGenerator import CurveGeneratorMixin
+from .type.pathLine import PathLine
+from .type.freehandPoint import FreehandPoint
 
 
 
@@ -230,6 +232,13 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     # Tool operates on these, but they are None until setSegmentString
     self.pathHeadGhost = None
     self.path = None
+    
+    '''
+    Cache last point generated.  CurveGenerator uses this.  In frame (CS) of CurveGenerator
+    Alternative is to get it from SegmentString,
+    but that might suffer loss of precision from coordinate transformations between frames.
+    '''
+    self.lastEndPointGenerated = None
     
     
   def setSegmentString(self, segmentString, pathHeadGhost, scenePosition):
@@ -256,7 +265,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.lineGenerator = self.LineGenerator(startPosition) 
     self.lineGenerator.send(None) 
     
-    self.curveGenerator = self.CurveGenerator(self.nullPathLine(startPosition))
+    self.curveGenerator = self.CurveGenerator(PathLine.nullPathLine(startPosition))
     self.curveGenerator.send(None) 
   
   
@@ -292,7 +301,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
         print "Abnormal pointerMoveEvent, exiting"
         sys.exit()
       else:
-        self.pathHeadGhost.updateEnd(pointerEvent.scenePos)
+        self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
   
   
   def pointerPressEvent(self, pointerEvent):
@@ -324,8 +333,9 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     TODO straight line is crude, should generate a curve
     '''
     
-    currenPathEnd = self.path.getEndPointVCS()
-    currentPointerPos = pointerEvent.viewPos
+    # Scene coordinates, float, but don't need near comparison
+    currenPathEnd = self.lastEndPointGenerated
+    currentPointerPos = pointerEvent.scenePos   # was viewPos
     # Only create final segment if pointer was NOT released at exact end of current path 
     # For example when ending on a timed cusp??
     if currenPathEnd != currentPointerPos:
@@ -360,3 +370,23 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     # Result should be visible
   
   
+  def mapFromDeviceToScene(self, pointVCS):
+    '''
+    Map from device coords (pipeline input) to freehandTool internal CS.
+    Which here is Scene CS.
+    Must be real valued.
+    Must be mappable to Local CS of SegmentString.
+    
+    Depends on Qt.
+    '''
+    '''
+    Can't: assert isinstance(pointVCS, PointerPoint), str(pointVCS),
+    since PathLine.p1(), p2() methods return QPoint.
+    '''
+    assert isinstance(pointVCS.x(), int)
+    assert isinstance(pointVCS.y(), int)
+    
+    # Hack: tool knows segmentString which knows scene which knows view which can map VCS to SCS
+    result = self.path.scene().views()[0].mapToScene(pointVCS)
+    #assert isinstance(result, QPointF)
+    return result

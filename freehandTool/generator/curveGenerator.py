@@ -4,8 +4,14 @@ Copyright 2012 Lloyd Konneker
 This is free software, covered by the GNU General Public License.
 '''
 import traceback
-from PySide.QtCore import QLineF, QPointF
+
+
 from segment import LineSegment, CurveSegment
+from ..type.pathLine import PathLine
+from ..type.freehandPoint import FreehandPoint
+from ..type.pointerPoint import PointerPoint
+
+
 
 
 
@@ -29,16 +35,22 @@ class CurveGeneratorMixin(object):
     
     More generally known as "curve fitting."
     '''
-    previousLine = startLine  # null PathLine
+    previousLine = startLine  # initial: assert is null PathLine
     
     try:
       while True:
         line, isLineForced = (yield)
-        assert isinstance(line, QLineF), "input is a PathLine"
+        assert isinstance(line, PathLine), "input is a PathLine"
         if isLineForced:
           ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
           segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(previousLine, line)
-          previousLine = self.nullPathLine(pathEndPoint) # !!! next element from midpoint of nullLine
+          '''
+          !!! next element from midpoint of nullLine
+          at end point of path, but as a PointerPoint
+          not as pathEndPoint, which is a FreehandPoint
+          '''
+          previousLine = PathLine.nullPathLine(PointerPoint(line.p2())) # pathEndPoint) 
+          
           self.path.appendSegments(segments, segmentCuspness=cuspness)
         else:
           ''' Fit to path, possibly a cusp. '''
@@ -47,7 +59,9 @@ class CurveGeneratorMixin(object):
           previousLine = line  # Roll forward
           # don't roll up the following and the one above, we want distinct traceback on errors
           self.path.appendSegments(segments, segmentCuspness=cuspness)
-          
+        
+        self.lastEndPointGenerated = pathEndPoint # !!! global cache
+        
         self.pathHeadGhost.updateStart(pathEndPoint)
        
     except Exception:
@@ -69,14 +83,6 @@ class CurveGeneratorMixin(object):
       print "closed curve generator"
 
 
-  def nullPathLine(self, point):
-    ''' 
-    Zero length PathLine at a point.
-    Initial send to CurveGenerator.
-    '''
-    return QLineF(point, point)
-
-    
 
   def segmentsFromLineMidToMid(self, line1, line2):
     '''
@@ -87,13 +93,14 @@ class CurveGeneratorMixin(object):
     '''
     
     # aliases for three points defined by two abutting PathLines
-    point1 = line1.p1()
-    point2 = line1.p2()
-    point3 = line2.p2()
+    # !!! Here we being real valued math, in a new CS (e.g. Scene)
+    point1 = FreehandPoint(self.mapFromDeviceToScene(line1.p1()))
+    point2 = FreehandPoint(self.mapFromDeviceToScene(line1.p2()))
+    point3 = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))
     
     # midpoints of PathLines
-    midpoint1 = self.interval(1/2.0, point2, point1)  # needed if creating QGraphicPathItem directly
-    midpoint2 = self.interval(1/2.0, point3, point2)
+    midpoint1 = point2.interval(point1, 1/2.0)  # needed if creating QGraphicPathItem directly
+    midpoint2 = point3.interval(point2, 1/2.0)
     
     denom = self.ddenom(point1, point3);
     if denom != 0.0:
@@ -116,8 +123,8 @@ class CurveGeneratorMixin(object):
       '''
       #print "mid to mid curve"
       return ([CurveSegment(startPoint=midpoint1,
-                            controlPoint1=self.interval(0.5+0.5*alpha, point1, point2), 
-                            controlPoint2=self.interval(0.5+0.5*alpha, point3, point2), 
+                            controlPoint1=point1.interval(point2, 0.5+0.5*alpha), 
+                            controlPoint2=point3.interval(point2, 0.5+0.5*alpha), 
                             endPoint=midpoint2)], 
               midpoint2,
               [False])  # Not a cusp
@@ -134,7 +141,7 @@ class CurveGeneratorMixin(object):
     - [curve, line], cuspness = [False, True]
     '''
     midToMidsegments, endOfMidToMid, cuspness = self.segmentsFromLineMidToMid(line1, line2)
-    finalEndPoint = line2.p2()
+    finalEndPoint = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))  # line2.p2()
     print "Mid to end"
     midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
     return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
@@ -154,20 +161,11 @@ class CurveGeneratorMixin(object):
     and will subsequently generate segment from second midpoint.
     '''
     print "cusp <<<"
-    firstSegment = LineSegment(self.path.getEndPointVCS(), cuspPoint)
+    # !!! Here is where we use cache
+    firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
     secondSegment = LineSegment(cuspPoint, endPoint)
     return [firstSegment, secondSegment], endPoint, [True, False]  # First segment is cusp
   
-  
-
-  
-  def interval(self, fraction, point1, point2):
-    ''' 
-    Return point fractionally along line from point1 to point2 
-    I.E. fractional sect (eg bisect) between vectors.
-    '''
-    return QPointF( point1.x() + fraction * (point2.x() - point1.x()),
-                    point1.y() + fraction * (point2.y() - point1.y())  )
   
   
   '''
@@ -177,7 +175,7 @@ class CurveGeneratorMixin(object):
       
   def ddenom(self, p0, p1):
     ''' ??? '''
-    r = self.cardinalDirectionLeft90(p0, p1)
+    r = p0.cardinalDirectionLeft90(p1)
     return r.y()*(p1.x()-p0.x()) - r.x()*(p1.y()-p0.y());
     
     
@@ -188,13 +186,6 @@ class CurveGeneratorMixin(object):
     Scalar.
     '''
     return (p1.x()-p0.x()) * (p2.y()-p0.y()) - (p2.x()-p0.x()) * (p1.y()-p0.y())
-  
-  def cardinalDirectionLeft90(self, p0, p1):
-    '''
-    Return unit (length doesn't matter?) vector 90 degrees counterclockwise from p1-p0,
-    but clamped to one of eight cardinal direction (n, nw, w, etc) 
-    '''
-    return QPointF(-self.sign(p1.y()-p0.y()), self.sign(p1.x()-p0.x()))
     
   
   def clampAlpha(self, alpha):
@@ -202,13 +193,4 @@ class CurveGeneratorMixin(object):
     elif alpha > 1:   return 1
     else:             return alpha
     
-    
-  def sign(self, x):
-    ''' Known wart of standard Python: no sign(). '''
-    if x > 0:
-      return 1
-    elif x < 0:
-      return -1
-    else:
-      return 0
 

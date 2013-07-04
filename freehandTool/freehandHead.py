@@ -18,6 +18,8 @@ so that it follows the pointer track with more fidelity.
 from PySide.QtGui import QGraphicsPathItem, QPainterPath
 from PySide.QtCore import QPoint
 
+from type.freehandPoint import FreehandPoint
+
 
 
 class PointerTrackGhost(QGraphicsPathItem):
@@ -53,13 +55,14 @@ class PointerTrackGhost(QGraphicsPathItem):
     self.show()
     
   
-  def updateStart(self, pointVCS):
+  def updateStart(self, pointSCS):
     '''
     Completely abandon the working path;
     assume new start point is near self.end (so that lineTo is short.)
     '''
+    assert isinstance(pointSCS, FreehandPoint)
     self.path = QPainterPath()
-    self.path.moveTo(self.floatSceneFromIntViewPoint(pointVCS))
+    self.path.moveTo(pointSCS)  # OLD self.floatSceneFromIntViewPoint(pointVCS))
     self.path.lineTo(self.end)
     self.setPath(self.path)
     
@@ -69,6 +72,7 @@ class PointerTrackGhost(QGraphicsPathItem):
     Update current path by appending lineTo new end point.
     '''
     # print "updateEnd"
+    assert isinstance(point, FreehandPoint)
     self.end = point
     self.path.lineTo(point)
     self.setPath(self.path)

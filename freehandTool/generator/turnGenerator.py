@@ -19,6 +19,9 @@ class TurnGeneratorMixin(object):
     Generates Turns.
     A Turn is a position between lines that lie on a axis (vertical or horizontal).
    
+    This is agnostic of int versus real, with no loss of precision.
+    Typically, in int.
+    
     Qt doesn't have event.time . Fabricate it here.  X11 has event.time.
     '''
     

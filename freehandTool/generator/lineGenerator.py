@@ -4,7 +4,7 @@ Copyright 2012 Lloyd Konneker
 This is free software, covered by the GNU General Public License.
 '''
 import traceback
-from PySide.QtCore import QLineF
+from ..type.pathLine import PathLine
 from constraints import Constraints
 
 
@@ -70,14 +70,14 @@ class LineGeneratorMixin(object):
         print "closing line generator"
         #print "startTurn, previousTurn", startTurn, previousTurn
         ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
-        self.curveGenerator.send((QLineF(startTurn, previousTurn), False))
+        self.curveGenerator.send((PathLine(startTurn, previousTurn), False))
       print "closed line generator"
   
   
   
   def _smallestLineFromPath(self, turn1, turn2):
     ''' For TESTING: just emit a vector regardless of fit. '''
-    return QLineF(turn1, turn2)
+    return PathLine(turn1, turn2)
   
   
   def _lineFromPath(self, startTurn, previousTurn, currentTurn, constraints, directions=None):
@@ -115,7 +115,7 @@ class LineGeneratorMixin(object):
       print "Four directions"
       self.resetLineFittingFilter()
       # Note end is previousTurn, not current Turn
-      return QLineF(startTurn, previousTurn)
+      return PathLine(startTurn, previousTurn)
     else:
     '''
     # Vector from startTurn, via many turns, to currentTurn
@@ -129,10 +129,10 @@ class LineGeneratorMixin(object):
       # reset
       constraints.__init__()
       # directions.reset()
-      return result
     else:
       constraints.update(vectorViaAllTurns)
-      return None # Defer, until subsequent corner
+      result = None # Defer, until subsequent corner
+    return result
     
     
   def _forceLineFromPath(self, startTurn, previousTurn, currentTurn, constraints, directions=None):
@@ -146,10 +146,10 @@ class LineGeneratorMixin(object):
       ''' A reversal. A line from start to current would be Null. '''
       print "Reversal"
       assert previousTurn != startTurn
-      return QLineF(startTurn, previousTurn)
+      return PathLine(startTurn, previousTurn)
     else:
       ## print "Force PathLine", startTurn, currentTurn
-      return QLineF(startTurn, currentTurn)
+      return PathLine(startTurn, currentTurn)
     
     
   def _interpolateConstraintViolating(self, startTurn, lastSatisfyingTurn, firstNonsatisfingTurn):
@@ -160,6 +160,6 @@ class LineGeneratorMixin(object):
     This version simply returns PathLine to lastSatisfyingTurn (a null interpolation.)
     potrace does more, a non-null interpolation.
     '''
-    return QLineF(startTurn, lastSatisfyingTurn)
+    return PathLine(startTurn, lastSatisfyingTurn)
   
   

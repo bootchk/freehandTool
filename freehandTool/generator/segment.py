@@ -36,7 +36,7 @@ class Segment(object):
   - know endPoint and whether a ControlPoint is that endPoint
   - relay controlPointChanged
   
-  !!! Coords in View CS
+  !!! Points are FreehandPoints, in Scene CS
   '''
   
   def __init__(self):
@@ -60,9 +60,10 @@ class Segment(object):
     return result
   
   
-  def asPointsVCS(self):
+  def asPointsScene(self):
     '''
-    Representation as tuple of coordinates of self ControlPoints.
+    Representation as tuple of coordinates of self ControlPoints,
+    which are in curveGenerator's frame, which is Scene CS.
     
     Tuple of points is compatible with Qt QPainterPath API.
     '''
@@ -135,13 +136,15 @@ class LineSegment(Segment):
     For now, use the midpoint for both direction ControlPoints.
     FUTURE divide in thirds.
     '''
-    midpoint = self.interpolatePoints(startPoint, endPoint)
+    midpoint = startPoint.interval(endPoint, 1/2.0)
     self.controlPoints[1].setCoordinate(midpoint)
     self.controlPoints[2].setCoordinate(midpoint)
 
+  """
   def interpolatePoints(self, startPoint, endPoint):
     # TODO: this should be in a vector library
     return startPoint + (endPoint - startPoint) / 2
+  """
 
 
 class CurveSegment(Segment):

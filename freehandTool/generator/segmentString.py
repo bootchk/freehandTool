@@ -152,6 +152,8 @@ class SegmentString(QGraphicsPathItem):
     self.cuspness = Cuspness()
     self.controlPointSet = None
     
+    self.cachedEndFreehandPoint = None
+    
     self.setPath(QPainterPath(self.origin()))
     # ensure: path has been set, self.myPath() returns "MoveTo(0,0)"
   
@@ -202,8 +204,17 @@ class SegmentString(QGraphicsPathItem):
   '''
     
     
-  def getEndPointVCS(self):
-    ''' 
+  """
+  Not used
+  
+  def getEndFreehandPoint(self):
+    '''
+    End point of segment in same frame as it was created from (frame used by CurveGenerator.)
+    
+    The implementation is: cached.
+    So as to avoid possible loss of precision from inverse transformation. (Probably not important.)
+    
+    
     End point of a SegmentString is:
     - coordinates of its last element, in VCS
     - OR startingPoint if has no Segments
@@ -216,6 +227,7 @@ class SegmentString(QGraphicsPathItem):
     '''
     return self._pointVCSForPathElement(element = self.myPath().elementAt(self.myPath().elementCount() - 1))
   
+  
   def getStartPointVCS(self):
     ''' 
     Start point of a SegmentString is:
@@ -223,6 +235,7 @@ class SegmentString(QGraphicsPathItem):
     - in VCS
     '''
     return self._pointVCSForPathElement(element = self.myPath().elementAt(0))
+  """
 
   def getStartPointLCS(self):
     return self.myPath().elementAt(0)
@@ -231,6 +244,7 @@ class SegmentString(QGraphicsPathItem):
   '''
   Responsibility: 7. map between representations
   '''
+  """ Not used
   def _pointVCSForPathElement(self, element):
     '''
     Return  QPointF in VCS for QPathElements.
@@ -239,6 +253,7 @@ class SegmentString(QGraphicsPathItem):
     Also map from Local CS (of the QGraphicsItem) to View CS (of the tool)
     '''
     return self._mapFromLocalToDevice(self._unmappedPointForPathElement(element))
+  """
   
   def _unmappedPointForPathElement(self, element):
     ''' Point in LCS for element. '''
@@ -250,6 +265,8 @@ class SegmentString(QGraphicsPathItem):
     intPointVCS = self.scene().views()[0].mapFromScene(pointSCS)
     return QPointF(intPointVCS)
   
+  """
+  Unused
   def _mapFromDeviceToLocal(self, pointVCS):
     '''
     Map from freehandTool internal coordinate in View CS float
@@ -259,19 +276,14 @@ class SegmentString(QGraphicsPathItem):
     intPointVCS = QPoint(round(pointVCS.x()), round(pointVCS.y()))
     pointSCS = self.scene().views()[0].mapToScene(intPointVCS)
     return self.mapFromScene(pointSCS)
+  """
   
-  
-  def appendInternalRepr(self, path, pointsLCS):
-    '''
-    Append internal repr of segment for given pointsLCS.
+  def _mapFromSceneToLocal(self, pointSCS):
+    return self.mapFromScene(pointSCS)
     
-    !!! This should be the only place where we know that internal repr is cubicTo (even for straight lines.)
-    !!! and cubicTo has 3 points of Segment's 4 points.
-    '''
-    assert len(pointsLCS) == SegmentString.ELEMENTS_PER_SEGMENT
-    # print "appendInternalRep", pointsLCS
-    path.cubicTo(*pointsLCS[1:])
+    
   
+
   
   '''
   Responsibililty: 2. maintain structure.
@@ -342,7 +354,8 @@ class SegmentString(QGraphicsPathItem):
     '''
     
     # !!! Python map() and Qt 'map' meaning transform between coordinate systems
-    pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsVCS())
+    ## WAS pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsScene())
+    pointsLCS = map(self._mapFromSceneToLocal, segment.asPointsScene())
     
     '''
     !!! Now the segment might be null, due to floating point errors.
@@ -351,6 +364,18 @@ class SegmentString(QGraphicsPathItem):
     '''
     self.appendInternalRepr(path, pointsLCS)
     
+    
+  def appendInternalRepr(self, path, pointsLCS):
+    '''
+    Append internal repr of segment for given pointsLCS.
+    
+    !!! This should be the only place where we know that internal repr is cubicTo (even for straight lines.)
+    !!! and cubicTo has 3 points of Segment's 4 points.
+    '''
+    assert len(pointsLCS) == SegmentString.ELEMENTS_PER_SEGMENT
+    # print "appendInternalRep", pointsLCS
+    path.cubicTo(*pointsLCS[1:])
+  
   
   def segmentChanged(self, segment, indexOfSegmentInString):
     ''' 
