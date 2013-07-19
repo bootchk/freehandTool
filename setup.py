@@ -8,5 +8,8 @@ setup(name='freehandTool',
       author='Lloyd Konneker',
       author_email='bootch@nc.rr.com',
       url='https://github.com/bootchk/freehandTool',
-      packages=['freehandTool', 'freehandTool.generator']
+      packages=['freehandTool',
+                'freehandTool.generator',
+                'segmentString',
+                'type']
      )

@@ -239,10 +239,10 @@ import sys
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
 from PySide.QtCore import QObject
 
-from generator.segment import LineSegment
 from generator.turnGenerator import TurnGeneratorMixin
 from generator.lineGenerator import LineGeneratorMixin
 from generator.curveGenerator import CurveGeneratorMixin
+from .segmentString.segment import LineSegment
 from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
 
@@ -365,7 +365,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     (and close() CANNOT return a value.)
     
     TODO are we sure not leaving PointerTrack one pixel off?
-    TODO straight line is crude, should generate a curve
+    TODO straight line is crude, should generate a curve or pointerTrack (many line segments)
     '''
     
     # Scene coordinates, float, but don't need near comparison

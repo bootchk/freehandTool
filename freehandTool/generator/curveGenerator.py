@@ -6,7 +6,7 @@ This is free software, covered by the GNU General Public License.
 import traceback
 
 
-from segment import LineSegment, CurveSegment
+from ..segmentString.segment import LineSegment, CurveSegment
 from ..type.pathLine import PathLine
 from ..type.freehandPoint import FreehandPoint
 from ..type.pointerPoint import PointerPoint
