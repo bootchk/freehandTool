@@ -26,7 +26,8 @@ class FreehandPoint(QPointF):
   
   Thin wrapper of implementation in Qt.
   
-  For now, in device CS (Qt View.)
+  This module doesn't care what coordinate system (CS or frame) points are in
+  (but in Freehand, they are all be in the same frame.)
   '''
   
   def interval(self, other, fraction):

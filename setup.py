@@ -10,6 +10,6 @@ setup(name='freehandTool',
       url='https://github.com/bootchk/freehandTool',
       packages=['freehandTool',
                 'freehandTool.generator',
-                'segmentString',
-                'type']
+                'freehandTool.segmentString',
+                'freehandTool.type']
      )
