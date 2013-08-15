@@ -47,7 +47,7 @@ class PointerTrackGhost(QGraphicsPathItem):
   
   
   def showAt(self, initialPosition):
-    # print "showAt"
+    #print "showAt"
     self.start = initialPosition
     self.end = initialPosition
     self.path.moveTo(initialPosition)
@@ -71,7 +71,7 @@ class PointerTrackGhost(QGraphicsPathItem):
     '''
     Update current path by appending lineTo new end point.
     '''
-    # print "updateEnd"
+    #print "updateEnd"
     assert isinstance(point, FreehandPoint)
     self.end = point
     self.path.lineTo(point)
@@ -95,7 +95,7 @@ class PointerTrackGhost(QGraphicsPathItem):
   def updateStart(self, pointVCS):
     '''
     '''
-    print "updateStart"
+    #print "updateStart"
     # !!! start point from FreehandTool is in View CS. 
     pointViewInt = QPoint(pointVCS.x(), pointVCS.y())
     pointSceneFloat = self.scene().views()[0].mapToScene(pointViewInt)
@@ -120,7 +120,7 @@ class PointerTrackGhost(QGraphicsPathItem):
     assert self.path.elementCount() > 1 # moveTo, lineTo
     for elementIndex in range(1, self.path.elementCount()):
       element = self.path.elementAt(elementIndex)
-      print element.x, element.y, point
+      #print element.x, element.y, point
       if element.x == point.x() and element.y == point.y() :
         return elementIndex
     assert False, 'New start point must be on existing path.'

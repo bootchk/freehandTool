@@ -1,0 +1,40 @@
+
+This is a hand generated changelog for versions, not very accurate.
+Use >git log for every commit.
+
+
+Version 0.0.2
+=============
+
+SegmentString, Segment, ControlPoint classes.
+Explicitly model the abstractions of a SegmentString.
+This more cleanly separates freehandTool from what it produces.
+Demonstrates editing a SegmentString by manipulation of its ControlPoints.
+(Although editing is not graphical, just crude demo via keystrokes.)
+
+
+Version 0.0.3
+=============
+
+- Relations between ControlPoints defines actions (behavior of user manipulations.)
+- Cusps known by SegmentString 
+- Actions defined as a Strategy/Policy
+- An API that can be cleanly hooked to a GUI editor.
+
+Version 0.1
+===========
+
+A production version?
+
+Add exception for generated null segments, catch the exception internally, and handle it gracefully.
+I don't expect the algorithm to generate null segments, but if it does they are handled.
+
+Improve ghosting of the head of the generated curve: path instead of straight line.
+
+Clarify use of input, view (int pixel) coords and internal, scene (float) coords.
+Eliminate rounding errors by not converting in the back direction.
+
+Reraise StopIteration.  If the tool fails, it will generate this exception.
+A caller might be able to rescue.
+
+Remove all print statements.

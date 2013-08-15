@@ -4,8 +4,8 @@
                    Copyright 2012 L. Konneker
                    -------------------------
 
-1. About
-========
+About
+=====
 
 A freehand drawing tool.
 Where a tool is a user interface object, something a user uses.
@@ -34,34 +34,23 @@ References:
 See much more technical discussion in the code.
 
 
-2. Version 0.0.2
-================
+Versions
+========
 
-SegmentString, Segment, ControlPoint classes.
-Explicitly model the abstractions of a SegmentString.
-This more cleanly separates freehandTool from what it produces.
-Demonstrates editing a SegmentString by manipulation of its ControlPoints.
-(Although editing is not graphical, just crude demo via keystrokes.)
+See CHANGELOG.
 
 
-3. Version 0.0.3
-================
+Serialize/Deserialize
+======================
 
-- Relations between ControlPoints defines actions (behavior of user manipulations.)
-- Cusps known by SegmentString 
-- Actions defined as a Strategy/Policy
-- An API that can be cleanly hooked to a GUI editor.
+The output SegmentString, a QGraphicsPathItem, does not pickle.
+But QPainterPath implements << for serializing, and it's not hard to do (it's not in this package.)
 
-
-4. Serialize/Deserialize
-========================
-TODO
-Calculate cuspness geometrically.
 Cuspness is not currently serializable/deserializable, only exists just after SegmentString creation.
 
 
-5. Directory structure and distribution
-=======================================
+Directory structure and distribution
+====================================
 The top directory freehandTool includes a demo app, freehandApp.py.
 It also include other distribution artifacts e.g. setup.py.
 
@@ -74,8 +63,9 @@ The directory freehandTool.freehandTool.generator is a Python package that the t
 The Python distribution (a zipped archive) includes only the package freehandTool.freehandTool and subpackages,
 but not the demo app.
 
-6. The demo app
-===============
+
+The demo app
+============
 
 Draw with the mouse left button down.
 Any key modifies an arbitrary control point (the second one?)
@@ -83,8 +73,9 @@ A key with control key also down modifies said control point while maintaining c
 
 A real app would have an alternate user interface for editing (dragging?) control points.
 
-7.  Installing
-==============
+
+Installing
+==========
 
 If you clone the git repository, you can change directory to the project directory and simply execute freehandApp.py.
 

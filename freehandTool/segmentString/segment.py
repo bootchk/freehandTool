@@ -62,7 +62,7 @@ class Segment(object):
     Float equality a problem?
     '''
     result = self.controlPoints[0] == self.controlPoints[3]
-    # print "isNull", result
+    #print "isNull", result
     return result
   
   
