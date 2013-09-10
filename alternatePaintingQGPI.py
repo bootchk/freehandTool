@@ -24,7 +24,7 @@ class AlternateColorPaintingQGPI(object):
     while True:
       try:
         element = path.elementAt(i)
-        # print type(element), element.type
+        #print type(element), element.type
         if element.isMoveTo():
           pathEnd = QPointF(element.x, element.y)
           i+=1

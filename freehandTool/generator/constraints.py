@@ -43,11 +43,11 @@ class Constraints(object):
     If you take out turnGenerator, this might make sense.
    
     if abs(v.x())<=1 and abs(v.y())<=1 :
-      print "No constraints."
+      #print "No constraints."
       pass
     else:
     '''
-    # print "Updating constraints"
+    #print "Updating constraints"
     offset = PointerPoint( v.x() + (1 if v.y() >= 0 and (v.y()>0 or v.x()<0) else -1 ),
                       v.y() + (1 if v.x() <= 0 and (v.x()<0 or v.y()<0) else -1 ) )
     if self.constraintLeft.crossProduct(offset) >= 0 :

@@ -374,7 +374,7 @@ class SegmentString(QGraphicsPathItem):
     !!! and cubicTo has 3 points of Segment's 4 points.
     '''
     assert len(pointsLCS) == SegmentString.ELEMENTS_PER_SEGMENT
-    # print "appendInternalRep", pointsLCS
+    #print "appendInternalRep", pointsLCS
     path.cubicTo(*pointsLCS[1:])
   
   
@@ -383,7 +383,7 @@ class SegmentString(QGraphicsPathItem):
     User changed control points of segment (i.e. model.)
     Propagate change to path (i.e. view.) 
     '''
-    ## print "Segment changed"
+    ##print "Segment changed"
     self.updateSegment(segment, indexOfSegmentInString)
   
   
@@ -526,7 +526,7 @@ class SegmentString(QGraphicsPathItem):
     (last point of previous segment shared with first point of next segment.)
     E.G. CurveSegment requires four points from three in the path.
     '''
-    # print "SegmentIndex", segmentIndex
+    #print "SegmentIndex", segmentIndex
     assert segmentIndex >= 0 and segmentIndex <= self._indexOfLastSegment()
     assert self.countSegments() > 0
     

@@ -331,14 +331,21 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
       except StopIteration:
         '''
         While user is moving pointer with pointer button down, we don't expect pipe to stop.
-        If programming error stops pipe, quit app so we can see error trace.
+        For debugging, call exitAbnormally().
+        If a component of large app, raise.
+        A caller might catch it and rescue by ending and restarting the tool?
         '''
-        print "Abnormal pointerMoveEvent, exiting"
-        sys.exit()
+        raise
       else:
         self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
   
   
+  def exitAbnormally(self):
+    " For debugging: quit app so we can see error trace. "
+    print "Abnormal pointerMoveEvent, exiting"
+    sys.exit()
+    
+    
   def pointerPressEvent(self, pointerEvent):
     ''' 
     Start freehand drawing. 
@@ -351,7 +358,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.closeFilterPipe()
     self.pathHeadGhost.hide()
     self._createFinalSegment(pointerEvent)
-    print "Final segment count", self.path.countSegments()
+    #print "Final segment count", self.path.countSegments()
   
   
   def _createFinalSegment(self, pointerEvent):
@@ -374,7 +381,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     # Only create final segment if pointer was NOT released at exact end of current path 
     # For example when ending on a timed cusp??
     if currenPathEnd != currentPointerPos:
-      print "Created final line segment"
+      #print "Created final line segment"
       finalLineSegment = LineSegment(startPoint=currenPathEnd, endPoint=currentPointerPos)
       self.path.appendSegments( [finalLineSegment], segmentCuspness=[False])
   

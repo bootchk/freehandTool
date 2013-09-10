@@ -36,7 +36,7 @@ class LineGeneratorMixin(object):
       while True:
         turn, positionElapsedTime = (yield)
         #turnElapsedTime = turnClock.restart()
-        # print "Turn elapsed", turnElapsedTime
+        #print "Turn elapsed", turnElapsedTime
         #line = self.smallestLineFromPath(previousTurn, turn) # TEST 
         line = self._lineFromPath(startTurn, previousTurn, turn, constraints) # ,directions)
         if line is not None:  # if turn not satisfied by vector
@@ -54,24 +54,25 @@ class LineGeneratorMixin(object):
             startTurn = previousTurn  # !!! current turn is part of next PathLine
             didLastEmitCusp = True
           else:
-            print "Skipping consecutive cusps"
+            #print "Skipping consecutive cusps"
+            pass
         # else current path (all turns) still satisfied by a PathLine: wait
           
         previousTurn = turn  # Roll forward  !!! Every turn, not just on send()
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
       # Unexpected programming errors, which are obscured unless caught
-      print "Exception in LineGenerator"
+      #print "Exception in LineGenerator"
       traceback.print_exc()
       raise
     except GeneratorExit:
-      print "closing line generator"
+      #print "closing line generator"
       if previousTurn != startTurn:
-        print "closing line generator"
+        #print "closing line generator"
         #print "startTurn, previousTurn", startTurn, previousTurn
         ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
         self.curveGenerator.send((PathLine(startTurn, previousTurn), False))
-      print "closed line generator"
+      #print "closed line generator"
   
   
   
@@ -112,7 +113,7 @@ class LineGeneratorMixin(object):
     if len(directions) > 3:
       # a path with four directions can't be approximated with one vector
       # end point is starting pixel of segment ???
-      print "Four directions"
+      #print "Four directions"
       self.resetLineFittingFilter()
       # Note end is previousTurn, not current Turn
       return PathLine(startTurn, previousTurn)
@@ -122,7 +123,7 @@ class LineGeneratorMixin(object):
     vectorViaAllTurns = currentTurn - startTurn
       
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
-      # print "Constraint violation", constraints, "vector", vectorViaAllTurns
+      #print "Constraint violation", constraints, "vector", vectorViaAllTurns
       result = self._interpolateConstraintViolating(startTurn=startTurn,
          lastSatisfyingTurn=previousTurn,
          firstNonsatisfingTurn=currentTurn)
@@ -144,11 +145,11 @@ class LineGeneratorMixin(object):
     
     if startTurn == currentTurn:
       ''' A reversal. A line from start to current would be Null. '''
-      print "Reversal"
+      #print "Reversal"
       assert previousTurn != startTurn
       return PathLine(startTurn, previousTurn)
     else:
-      ## print "Force PathLine", startTurn, currentTurn
+      ##print "Force PathLine", startTurn, currentTurn
       return PathLine(startTurn, currentTurn)
     
     

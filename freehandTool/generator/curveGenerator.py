@@ -80,7 +80,8 @@ class CurveGeneratorMixin(object):
       GeneratorExit exception is still in effect after finally, but caller does not see it,
       and Python does NOT allow it to return a value.
       '''
-      print "closed curve generator"
+      #print "closed curve generator"
+      pass
 
 
 
@@ -142,7 +143,7 @@ class CurveGeneratorMixin(object):
     '''
     midToMidsegments, endOfMidToMid, cuspness = self.segmentsFromLineMidToMid(line1, line2)
     finalEndPoint = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))  # line2.p2()
-    print "Mid to end"
+    #print "Mid to end"
     midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
     return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
 
@@ -160,7 +161,7 @@ class CurveGeneratorMixin(object):
     Note we already generated segment to first midpoint,
     and will subsequently generate segment from second midpoint.
     '''
-    print "cusp <<<"
+    #print "cusp <<<"
     try:
       # !!! Here is where we use cache
       firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)

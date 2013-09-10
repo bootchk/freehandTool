@@ -59,7 +59,7 @@ class SegmentActions(object):
     if self.isRoleAnchorAtCusp(controlPoint):
       if not alternateMode:
         # default is : make cusps more cuspy or possibly take out cusp
-        print "Moving cusp anchor"
+        #print "Moving cusp anchor"
         self.moveAnchorSetNotMaintainingCuspness(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
       else:
         # alternate is weaker: don't remove the cusp, only move it as a three ControlPoint unit

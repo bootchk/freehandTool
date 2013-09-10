@@ -35,7 +35,7 @@ class TurnGeneratorMixin(object):
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
-    # print "init turn"
+    #print "init turn"
     
     try:
       while True:
@@ -49,12 +49,12 @@ class TurnGeneratorMixin(object):
           pass
     # Not catching general exceptions, have not found a need for it.
     except GeneratorExit:
-      print "Closing turn generator"
+      #print "Closing turn generator"
       # assert position is defined
       if previousPosition != position:
         ''' Have position not sent. Fabricate a turn (equal to position) and send() '''
         self.lineGenerator.send((position, 0))
-      print "Closed turn generator"
+      #print "Closed turn generator"
       
 
   
