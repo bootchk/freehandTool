@@ -237,7 +237,7 @@ import sys
 
 # !!! QTime for timing of cusps
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
-from PySide.QtCore import QObject
+from PyQt4.QtCore import QObject
 
 from generator.turnGenerator import TurnGeneratorMixin
 from generator.lineGenerator import LineGeneratorMixin

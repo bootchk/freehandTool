@@ -15,8 +15,8 @@ Derived from ghostLine, which is a QGLineItem, whereas this is a QGPathItem,
 so that it follows the pointer track with more fidelity.
 '''
 
-from PySide.QtGui import QGraphicsPathItem, QPainterPath
-from PySide.QtCore import QPoint
+from PyQt4.QtGui import QGraphicsPathItem, QPainterPath
+from PyQt4.QtCore import QPoint
 
 from type.freehandPoint import FreehandPoint
 

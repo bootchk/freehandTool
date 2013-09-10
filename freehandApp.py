@@ -9,8 +9,15 @@ Copyright 2012 Lloyd Konneker
 This is free software, covered by the GNU General Public License.
 '''     
 
-from PySide.QtCore import *
-from PySide.QtGui import *
+# Set PyQt API version to 2
+import sip
+API_NAMES = ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]
+API_VERSION = 2
+for name in API_NAMES:
+  sip.setapi(name, API_VERSION)
+  
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 import sys
 
 from freehandTool.pointerEvent import PointerEvent
@@ -31,7 +38,7 @@ class GraphicsView(QGraphicsView):
   def __init__(self, parent=None):
       super(GraphicsView, self).__init__(parent)
       
-      assert self.dragMode() is QGraphicsView.NoDrag
+      assert self.dragMode() == QGraphicsView.NoDrag
       self.setRenderHint(QPainter.Antialiasing)
       self.setRenderHint(QPainter.TextAntialiasing)
       self.setMouseTracking(True);  # Enable mouseMoveEvent
@@ -100,7 +107,7 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self, *args)
         self.scene = DiagramScene()
         self.view = GraphicsView(self.scene)
-        rect =QRect(-500, -500, 500, 500)
+        rect = QRectF(-500, -500, 500, 500)
         self.view.fitInView(rect)
         self.view.setSceneRect(rect)
         self.setCentralWidget(self.view)

@@ -2,8 +2,8 @@
 '''
 
 
-from PySide.QtCore import QEvent, QPointF, QPoint
-from PySide.QtGui import QGraphicsView
+from PyQt4.QtCore import QEvent, QPointF, QPoint
+from PyQt4.QtGui import QGraphicsView
 from .type.pointerPoint import PointerPoint
 
 
