@@ -238,7 +238,14 @@ class SegmentString(QGraphicsPathItem):
   """
 
   def getStartPointLCS(self):
-    return self.myPath().elementAt(0)
+    '''
+    Start QPointF of self.
+    
+    Note elementAt returns type Element in PyQt, and PyQt complains later (PySide did not.)
+    Convert to QPointF.  Note Element.x is a property, not a method.
+    '''
+    startElement = self.myPath().elementAt(0)
+    return QPointF(startElement.x, startElement.y)
   
   
   '''
@@ -404,8 +411,8 @@ class SegmentString(QGraphicsPathItem):
     # !!! TODO check that appending is effective.
     # The updated segment may be null to its predecessor or successor.
     # Then cuspness is whack
-
-    newPath = QPainterPath(self.getStartPointLCS())  # self.myPath().elementAt(0))
+    startPoint = self.getStartPointLCS()
+    newPath = QPainterPath(startPoint)  # self.myPath().elementAt(0))
     for segmentIndex in self._segmentIndexGenerator():
       if segmentIndex == indexOfSegmentInString:
         self._appendSegmentToPath(segment, newPath)
