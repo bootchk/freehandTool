@@ -40,6 +40,16 @@ class ControlPoint(object):
     return self.coordinate == other.coordinate
   
   
+  def __hash__(self):
+    ''' 
+    Python3: if eq is defined, hash must be defined so object usable as key in hashable collection.
+    
+    indexInParent defines type? so include it in hashing.
+    Otherwise two controlpoints with same coordinate hash identically.
+    '''
+    return hash((self.coordinate.x(), self.coordinate.y(), self.indexInParent ))
+  
+  
   def getCoordinate(self):
     return self.coordinate
   

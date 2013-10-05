@@ -3,8 +3,8 @@ Copyright 2012, 2013 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-from PyQt4.QtCore import QPointF, Qt
-from PyQt4.QtGui import QPainterPath
+from PyQt5.QtCore import QPointF, Qt
+from PyQt5.QtGui import QPainterPath
 
 
 

@@ -55,13 +55,14 @@ It currently depends on all segments being the same type having the same count o
 Cuspness deserialized.
 '''
 
-from PyQt4.QtGui import QGraphicsPathItem, QPainterPath
-from PyQt4.QtCore import QPointF
+from PyQt5.QtGui import QPainterPath
+from PyQt5.QtCore import QPointF
+from PyQt5.QtWidgets import QGraphicsPathItem
 
-from segment import CurveSegment
-from relations import Relations
-from segmentActions import segmentStringActions
-from cuspness import Cuspness
+from .segment import CurveSegment
+from .relations import Relations
+from .segmentActions import segmentStringActions
+from .cuspness import Cuspness
 
 
   
@@ -363,7 +364,7 @@ class SegmentString(QGraphicsPathItem):
     
     # !!! Python map() and Qt 'map' meaning transform between coordinate systems
     ## WAS pointsLCS = map(self._mapFromDeviceToLocal, segment.asPointsScene())
-    pointsLCS = map(self._mapFromSceneToLocal, segment.asPointsScene())
+    pointsLCS = list(map(self._mapFromSceneToLocal, segment.asPointsScene()))
     
     '''
     !!! Now the segment might be null, due to floating point errors.

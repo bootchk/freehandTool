@@ -38,3 +38,10 @@ Reraise StopIteration.  If the tool fails, it will generate this exception.
 A caller might be able to rescue.
 
 Remove all print statements.
+
+Version 0.2
+===========
+
+Convert to Python3 compatible code.
+Convert to PyQt5. To undo, replace PyQt5->PyQt4 and QtWidgets->QtGui.
+

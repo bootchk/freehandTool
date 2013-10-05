@@ -1,4 +1,4 @@
-#! /usr/bin/python
+from __future__ import print_function # Python3 compatible
 
 '''
 Copyright 2012 Lloyd Konneker
@@ -233,20 +233,19 @@ Segments are converted to Local CS (float) of SegmentString when appended.
 (An early design converted back and forth to Device CS, with loss of precision due to a call to round().)
 '''
 
+
 import sys
 
 # !!! QTime for timing of cusps
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
-from PyQt4.QtCore import QObject
+from PyQt5.QtCore import QObject
 
-from generator.turnGenerator import TurnGeneratorMixin
-from generator.lineGenerator import LineGeneratorMixin
-from generator.curveGenerator import CurveGeneratorMixin
+from .generator.turnGenerator import TurnGeneratorMixin
+from .generator.lineGenerator import LineGeneratorMixin
+from .generator.curveGenerator import CurveGeneratorMixin
 from .segmentString.segment import LineSegment
 from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
-
-
 
 
 '''
@@ -342,7 +341,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   
   def exitAbnormally(self):
     " For debugging: quit app so we can see error trace. "
-    print "Abnormal pointerMoveEvent, exiting"
+    print("Abnormal pointerMoveEvent, exiting")
     sys.exit()
     
     
@@ -395,13 +394,21 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     in an alternate mode (moving the control point independently
     versus moving the control point and its related control point together.)
      '''
+    print("Test moving control point.")
     controlPointSet = self.path.getControlPointSet()
     
+    """
+    Oct. 2013 Seems somewhat broken after conversion to Python3.
+    Now only 7 works???
+    """
     # delta an arbitrary control point
     # 8 start anchor of second segment
     # 6 is Direction CP of second seg
     # 7 is the end anchor of second segment
-    self.path.moveRelated(controlPoint=controlPointSet[8], 
+    arbitraryControlPoint = controlPointSet[7]
+    if arbitraryControlPoint is None:
+      print("Arbitrary control point is None")
+    self.path.moveRelated(controlPoint=arbitraryControlPoint, 
                           deltaCoordinate=FreehandPoint(5,5), 
                           alternateMode=alternateMode)
     # Result should be visible

@@ -11,8 +11,8 @@ This is one alternative.
 Another alternative is keep the head in the SegmentString, updating it.
 '''
 
-from PyQt4.QtGui import QGraphicsLineItem
-from PyQt4.QtCore import QLineF, QPoint
+from PyQt5.QtGui import QGraphicsLineItem
+from PyQt5.QtCore import QLineF, QPoint
 
 
 

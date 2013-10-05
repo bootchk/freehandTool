@@ -5,7 +5,7 @@ This is free software, covered by the GNU General Public License.
 '''
 import traceback
 from ..type.pathLine import PathLine
-from constraints import Constraints
+from .constraints import Constraints
 
 
 class LineGeneratorMixin(object):

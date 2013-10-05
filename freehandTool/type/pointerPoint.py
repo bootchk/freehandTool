@@ -3,7 +3,7 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-from PyQt4.QtCore import QPoint
+from PyQt5.QtCore import QPoint
 
 
 

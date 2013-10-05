@@ -16,7 +16,7 @@ regardless of their curvature (straight or curved.)
 This is a UI design decision.
 '''
 
-from controlPoint import ControlPoint
+from .controlPoint import ControlPoint
 from ..exception import FreehandNullSegmentError
 
 

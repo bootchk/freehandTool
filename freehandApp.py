@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 
 '''
 Qt app demonstrating freehand drawing tool.
@@ -16,8 +14,10 @@ API_VERSION = 2
 for name in API_NAMES:
   sip.setapi(name, API_VERSION)
   
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
 import sys
 
 from freehandTool.pointerEvent import PointerEvent
@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
         
 def main(args):
     app = QApplication(args)
+    app.setStyle(QStyleFactory.create("Fusion"))  # fixes gtk assertion errors
     mainWindow = MainWindow()
     mainWindow.setGeometry(100, 100, 500, 500)
     mainWindow.show()

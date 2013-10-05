@@ -1,3 +1,5 @@
+from __future__ import print_function # Python3 compatible
+
 '''
 Copyright 2012 Lloyd Konneker
 
@@ -67,7 +69,7 @@ class CurveGeneratorMixin(object):
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
       # Unexpected programming errors, which are obscured unless caught
-      print "Exception in CurveGenerator"
+      print("Exception in CurveGenerator")
       traceback.print_exc()
       raise
     except GeneratorExit:
@@ -166,11 +168,11 @@ class CurveGeneratorMixin(object):
       # !!! Here is where we use cache
       firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
     except FreehandNullSegmentError:
-      print "??? First segment null in segmentsForCusp"
+      print("??? First segment null in segmentsForCusp")
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        print "??? Both segments null in segmentsForCusp"
+        print("??? Both segments null in segmentsForCusp")
         result = [], endPoint, []
       else:
         # Only secondSegment is not null
@@ -179,7 +181,7 @@ class CurveGeneratorMixin(object):
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        print "??? Second segment null in segmentsForCusp"
+        print("??? Second segment null in segmentsForCusp")
         result = [firstSegment,], endPoint, [False,]
       else:
         # Normal case

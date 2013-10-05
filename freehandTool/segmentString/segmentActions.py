@@ -7,9 +7,9 @@ This is free software, covered by the GNU General Public License.
 
 import functools
 
-from controlPoint import ControlPoint
-from segment import ARM_TO, TIED_TO, OPPOSITE_TO
-from relationWalker import relationWalker
+from .controlPoint import ControlPoint
+from .segment import ARM_TO, TIED_TO, OPPOSITE_TO
+from .relationWalker import relationWalker
 
 
 class SegmentActions(object):
@@ -53,6 +53,8 @@ class SegmentActions(object):
     IOW, this defines how a drag of a ControlPoint playing a particular Role
     becomes a translation of a set of ControlPoints.
     '''
+    assert controlPoint is not None
+    
     # Create visitor function having parameter a ControlPoint instance, with deltaCoordinate fixed
     visitor = functools.partial(ControlPoint.updateCoordinate, deltaCoordinate=deltaCoordinate)
     
@@ -79,7 +81,8 @@ class SegmentActions(object):
       else:
         # default is strong: move whole side of arm (but not the side of arm on other side of Anchors.)
         self.moveDirectionArm(relations, controlPoint, deltaCoordinate, alternateMode, visitor)
-
+    else:
+      print("Control point has unknown role?")
 
   '''
   Roles of ControlPoints in SegmentString.
