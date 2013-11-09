@@ -267,6 +267,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.pathHeadGhost = None
     self.path = None
     
+    self._isGenerating = False
+    
     '''
     Cache last point generated.  CurveGenerator uses this.  In frame (CS) of CurveGenerator
     Alternative is to get it from SegmentString,
@@ -277,10 +279,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     
   def setSegmentString(self, segmentString, pathHeadGhost, scenePosition):
     '''
-    Initialization.
-    
-    Tell tool the SegmentString it should operate upon.
-    Caller should add segmentString graphics item to scene.
+    Client call to initialize: tell tool the SegmentString it should operate upon.
+    Client should add segmentString graphics item to scene.
     Tool starts writing into segmentString after pointerPressEvent().
     '''
     self.path = segmentString
@@ -288,22 +288,21 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.pathHeadGhost.showAt(scenePosition)
 
     
-  def initFilterPipe(self, startPosition):
+  def _initFilterPipe(self, startPosition):
     ''' 
     Initialize pipe of filters.
     They feed to each other in same order of creation.
      '''
     self.turnGenerator = self.TurnGenerator(startPosition) # call to generator function returns a generator
     self.turnGenerator.send(None) # Execute preamble of generator and pause at first yield
-    
     self.lineGenerator = self.LineGenerator(startPosition) 
     self.lineGenerator.send(None) 
-    
     self.curveGenerator = self.CurveGenerator(PathLine.nullPathLine(startPosition))
-    self.curveGenerator.send(None) 
+    self.curveGenerator.send(None)
+    self.setGenerating(True)
   
   
-  def closeFilterPipe(self):
+  def _closeFilterPipe(self):
     '''
     Close generators. 
     They will finally generate SOME of final objects (i.e. turn, PathLine) to current PointerPoint.
@@ -314,17 +313,17 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     Closing a generator may cause it to yield, and thus invoke downstream generators in the pipeline.
     Close generators in their order in the pipeline.
     '''
-    if self.turnGenerator is not None:  # Ignore race condition: pointerRelease without prior pointerPress
+    if self.isGenerating():  
       self.turnGenerator.close()
-      self.turnGenerator = None # Flag pipe is closed
       self.lineGenerator.close()
       self.curveGenerator.close()
+      self.setGenerating(False)
+    # else ignore pointerRelease without prior pointerPress, race?
 
 
   def pointerMoveEvent(self, pointerEvent):
-    ''' Feed pointerMoveEvent into a pipe. '''
-    # Generate if flag indicates pointer button down
-    if self.turnGenerator is not None:
+    ''' Client feeds pointerMoveEvent into a pipe. '''
+    if self.isGenerating():
       try:
         self.turnGenerator.send(pointerEvent.viewPos)  # Feed pipe
       except StopIteration:
@@ -335,8 +334,9 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
         A caller might catch it and rescue by ending and restarting the tool?
         '''
         raise
-      else:
+      else: # else no exception
         self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
+    # else ignore pointerEvent when not isGenerating
   
   
   def exitAbnormally(self):
@@ -346,19 +346,27 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     
     
   def pointerPressEvent(self, pointerEvent):
-    ''' 
-    Start freehand drawing. 
-    '''
-    self.initFilterPipe(pointerEvent.viewPos)
+    ''' Client call to start freehand drawing. '''
+    self._initFilterPipe(pointerEvent.viewPos)
 
   
   def pointerReleaseEvent(self, pointerEvent):
-    ''' User has ended freehand drawing. '''
-    self.closeFilterPipe()
+    ''' Client call to end freehand drawing. '''
+    self._closeFilterPipe()
     self.pathHeadGhost.hide()
     self._createFinalSegment(pointerEvent)
     #print "Final segment count", self.path.countSegments()
   
+  
+  def isGenerating(self):
+    ''' Is pointer button down and accepting pointerEvents. '''
+    return self._isGenerating
+  
+  def setGenerating(self, truth):
+    ''' Set flag indicating closed generators, not accepting pointerEvents. '''
+    self._isGenerating = truth
+    
+    
   
   def _createFinalSegment(self, pointerEvent):
     '''
