@@ -32,8 +32,8 @@ class PointerTrackGhost(QGraphicsPathItem):
   
   Implementation: extend QGraphicsPathItem.
   Use a path of lines, one for each pointerTrack value.
-  That is, there is no attempt here to make it minimal;
-  after all that is what the rest of freehand is doing.
+  That is, there is no attempt here to make it minimal or smooth;
+  that is what the rest of freehand is doing.
   I.E. this has about the same density as a bitmap of the pointerTrack.
   
   This presents a simplified API to FreehandTool,
@@ -41,29 +41,48 @@ class PointerTrackGhost(QGraphicsPathItem):
   '''
   def __init__(self, **kwargs):
     super(PointerTrackGhost,self).__init__(**kwargs)
-    self.start = None
+    self.start = None # cached start/end (don't get it from self.path)
     self.end = None
     self.path = QPainterPath() # working copy, frequently setPath() to self.
-    # ensure is hidden, not in scene
-  
+    self.hide()
+    assert self.isVisible() == False, 'initial PointerTrackGhost is hidden'
   
   def showAt(self, initialPosition):
-    #print "showAt"
+    '''
+    Resume using self, at given position, with length zero.
+    '''
+    #print "showAt", initialPosition
+    assert self.isVisible() == False, 'resumed PointerTrackGhost is hidden'
     self.start = initialPosition
     self.end = initialPosition
-    self.path.moveTo(initialPosition)
-    self.setPath(self.path)
+    self._replacePath()
     self.show()
+    # assert path length is zero
+    assert self.isVisible() == True
     
   
   def updateStart(self, pointSCS):
     '''
-    Completely abandon the working path;
-    assume new start point is near self.end (so that lineTo is short.)
+    Shorten self by changing start, towards end.
+    
+    Called when freehand generator has traced an increment:
+    determined one or more segments (lines and splines) that fit a prefix of self's path.
+    Said segments are now displayed, thus remove the prefix of self's path that they represent.
+    
+    This implementation replaces working path with a single lineTo.
+    (See below for work in progress, alternate implementation where we truncate a prefix of existing path.)
+    Assert new start point is near self.end (so that result path is shorter.)
     '''
+    # not assert is visible, but might be
     assert isinstance(pointSCS, FreehandPoint)
+    self.start = pointSCS
+    self._replacePath()
+    
+    
+  def _replacePath(self):
+    ''' Completely abandon the working path and replace it with a new path, from cached start/end '''
     self.path = QPainterPath()
-    self.path.moveTo(pointSCS)  # OLD self.floatSceneFromIntViewPoint(pointVCS))
+    self.path.moveTo(self.start)  # OLD self.floatSceneFromIntViewPoint(pointVCS))
     self.path.lineTo(self.end)
     self.setPath(self.path)
     
