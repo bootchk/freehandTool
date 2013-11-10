@@ -45,7 +45,7 @@ class TurnGeneratorMixin(object):
           history.updateEnd(newPosition)
     # Not catching general exceptions, have not found a need for it.
     except GeneratorExit:
-      self.flush(history)
+      self.flushTurnGenerator(history)
       
       
 
@@ -68,7 +68,7 @@ class TurnGeneratorMixin(object):
       return None
     
     
-  def flush(self, history):
+  def flushTurnGenerator(self, history):
     #print "Flush turn generator"
     if not history.isCollapsed():
       ''' Have position not sent. Send a turn at last known position. '''
