@@ -6,6 +6,7 @@ This is free software, covered by the GNU General Public License.
 
 from PyQt5.QtCore import QTime
 
+from history import History
 
 
 class TurnGeneratorMixin(object):
@@ -13,25 +14,20 @@ class TurnGeneratorMixin(object):
   Method name is capitalized because method *appears* to be a class.
   '''
   
-  def TurnGenerator(self, startPosition):
+  def TurnGenerator(self, initialPosition):
     '''
     Freehand send()'s PointerPosition when user moves graphics pointer.
-    Generates Turns.
     A Turn is a position between lines that lie on a axis (vertical or horizontal).
    
     This is agnostic of int versus real, with no loss of precision.
     Typically, in int.
     
     Qt doesn't have event.time . Fabricate it here.  X11 has event.time.
-    '''
     
+    close() may come before the first send() e.g if user just clicks pointer without moving it.
     '''
-    position must be defined not None since close() may come before the first send()
-    (and position is referenced in GeneratorExit handler)
-    for example if user just clicks pointer without moving it.
-    '''
-    position = startPosition
-    previousPosition = startPosition
+    history = History(initialPosition)
+    
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
@@ -39,22 +35,18 @@ class TurnGeneratorMixin(object):
     
     try:
       while True:
-        position = (yield)
+        newPosition = (yield) # 2nd entry point of this coroutine
         positionElapsedTime = positionClock.restart()
-        turn = self.detectTurn(previousPosition, position)
+        turn = self.detectTurn(history.end, newPosition)
         if turn is not None:
           self.lineGenerator.send((turn, positionElapsedTime))
-          previousPosition = position  # Roll forward
-        else: # path is still on an axis: wait
-          pass
+          history.collapse(newPosition)
+        else: # path is still on an axis with history.end: wait
+          history.updateEnd(newPosition)
     # Not catching general exceptions, have not found a need for it.
     except GeneratorExit:
-      #print "Closing turn generator"
-      # assert position is defined
-      if previousPosition != position:
-        ''' Have position not sent. Fabricate a turn (equal to position) and send() '''
-        self.lineGenerator.send((position, 0))
-      #print "Closed turn generator"
+      self.flush(history)
+      
       
 
   
@@ -76,4 +68,9 @@ class TurnGeneratorMixin(object):
       return None
     
     
-    
+  def flush(self, history):
+    #print "Flush turn generator"
+    if not history.isCollapsed():
+      ''' Have position not sent. Send a turn at last known position. '''
+      self.lineGenerator.send((history.end, 0)) # force a Turn 
+

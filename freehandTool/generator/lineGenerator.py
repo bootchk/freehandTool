@@ -39,12 +39,7 @@ class LineGeneratorMixin(object):
         #print "Turn elapsed", turnElapsedTime
         #line = self.smallestLineFromPath(previousTurn, turn) # TEST 
         line = self._lineFromPath(startTurn, previousTurn, turn, constraints) # ,directions)
-        if line is not None:  # if turn not satisfied by vector
-          self.curveGenerator.send((line, False))
-          # self.labelLine(str(positionElapsedTime), turn)
-          startTurn = previousTurn  # !!! current turn is part of next line
-          didLastEmitCusp = False
-        elif positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
+        if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
           # User turned slowly, send a forced PathLine which subsequently makes cusp-like graphic
           # Effectively, eliminate generation lag by generating a LinePathElement.
           if not didLastEmitCusp:
@@ -56,6 +51,12 @@ class LineGeneratorMixin(object):
           else:
             #print "Skipping consecutive cusps"
             pass
+        elif line is not None:  # if turn not satisfied by vector
+          self.curveGenerator.send((line, False))
+          # self.labelLine(str(positionElapsedTime), turn)
+          startTurn = previousTurn  # !!! current turn is part of next line
+          didLastEmitCusp = False
+        
         # else current path (all turns) still satisfied by a PathLine: wait
           
         previousTurn = turn  # Roll forward  !!! Every turn, not just on send()
@@ -145,11 +146,11 @@ class LineGeneratorMixin(object):
     
     if startTurn == currentTurn:
       ''' A reversal. A line from start to current would be Null. '''
-      #print "Reversal"
+      print "Reversal"
       assert previousTurn != startTurn
       return PathLine(startTurn, previousTurn)
     else:
-      ##print "Force PathLine", startTurn, currentTurn
+      print "Force PathLine", startTurn, currentTurn
       return PathLine(startTurn, currentTurn)
     
     
