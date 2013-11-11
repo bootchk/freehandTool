@@ -39,7 +39,6 @@ class CurveGeneratorMixin(object):
     '''
     assert initialLine.isNullPathLine()
     history = History(initialLine)
-    #previousLine = 
     
     try:
       while True:
@@ -75,7 +74,16 @@ class CurveGeneratorMixin(object):
       traceback.print_exc()
       raise
     except GeneratorExit:
-      ''' 
+      self.flushCurveGenerator(history)
+
+
+  def flushCurveGenerator(self, history):
+    '''
+    Assert my feeding generators have been flushed.
+    '''
+    '''
+    OLD DESIGN
+    
       Last drawn element stopped at midpoint of PathLine.
       Caller must draw one last element from there to current PointerPosition.
       Here we don't know PointerPosition, and caller doesn't *know* PathLine midpoint,
@@ -83,10 +91,14 @@ class CurveGeneratorMixin(object):
       
       GeneratorExit exception is still in effect after finally, but caller does not see it,
       and Python does NOT allow it to return a value.
-      '''
-      #logger.debug( "closed curve generator"
-      pass
-
+    '''
+    logger.debug("flush")
+    '''
+    Assert LineGenerator sent a NullPathLine that caused self to generate a segment to it's midpoint.
+    So already generated segments accurately reach end of the PointerTrack.
+    '''
+    assert history.end.isNullPathLine()
+    pass
 
 
   def segmentsFromLineMidToMid(self, line1, line2):

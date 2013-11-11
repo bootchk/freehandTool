@@ -81,11 +81,18 @@ class LineGeneratorMixin(object):
   
   
   def flushLineGenerator(self, history):
-    ''' The only case where history isCollapsed() is: never generated. '''
+    ''' 
+    The only case where history isCollapsed()==True is the case where we never generated any PathLines. 
+    IOW, the 'if branch' below is taken for all but that rare case.
+    '''
     logger.debug("flush")
     if not history.isCollapsed():
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
       self.curveGenerator.send((PathLine(history.start, history.end), False))
+      
+    ''' Cause CurveGenerator to generate a segmment to history.end Turn, which is the end of the PointerTrack.'''
+    self.curveGenerator.send((PathLine.nullPathLine(history.end), False))
+      
     
   
   

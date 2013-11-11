@@ -354,7 +354,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     ''' Client call to end freehand drawing. '''
     self._closeFilterPipe()
     self.pathHeadGhost.hide()
-    self._createFinalSegment(pointerEvent)
+    #OLD self._createFinalSegment(pointerEvent)
     #print "Final segment count", self.path.countSegments()
   
   
@@ -367,6 +367,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self._isGenerating = truth
     
     
+  """
+  OLD: In new design, closing pipe causes flush which generates final segments.
   
   def _createFinalSegment(self, pointerEvent):
     '''
@@ -391,7 +393,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
       #print "Created final line segment"
       finalLineSegment = LineSegment(startPoint=currenPathEnd, endPoint=currentPointerPos)
       self.path.appendSegments( [finalLineSegment], segmentCuspness=[False])
-  
+  """
   
   def testControlPoint(self, event, alternateMode):
     ''' 
