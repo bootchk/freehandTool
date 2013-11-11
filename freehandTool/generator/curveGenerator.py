@@ -1,12 +1,10 @@
-from __future__ import print_function # Python3 compatible
-
 '''
 Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
 import traceback
-
+import logging
 
 from ..segmentString.segment import LineSegment, CurveSegment
 from ..type.pathLine import PathLine
@@ -14,7 +12,8 @@ from ..type.freehandPoint import FreehandPoint
 from ..type.pointerPoint import PointerPoint
 from ..exception import FreehandNullSegmentError
 
-
+logger = logging.getLogger(__name__)  # module level logger
+logging.basicConfig(level=logging.DEBUG)
 
 
 class CurveGeneratorMixin(object):
@@ -68,8 +67,7 @@ class CurveGeneratorMixin(object):
        
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
-      # Unexpected programming errors, which are obscured unless caught
-      print("Exception in CurveGenerator")
+      logger.critical("Unexpected exception in CurveGenerator")  # program error
       traceback.print_exc()
       raise
     except GeneratorExit:
@@ -82,7 +80,7 @@ class CurveGeneratorMixin(object):
       GeneratorExit exception is still in effect after finally, but caller does not see it,
       and Python does NOT allow it to return a value.
       '''
-      #print "closed curve generator"
+      #logger.debug( "closed curve generator"
       pass
 
 
@@ -124,7 +122,7 @@ class CurveGeneratorMixin(object):
       as second control point for previous spline,
       said control points are colinear and joint between consecutive splines is smooth.
       '''
-      #print "mid to mid curve"
+      logger.debug("mid to mid curve")
       return ([CurveSegment(startPoint=midpoint1,
                             controlPoint1=point1.interval(point2, 0.5+0.5*alpha), 
                             controlPoint2=point3.interval(point2, 0.5+0.5*alpha), 
@@ -145,7 +143,7 @@ class CurveGeneratorMixin(object):
     '''
     midToMidsegments, endOfMidToMid, cuspness = self.segmentsFromLineMidToMid(line1, line2)
     finalEndPoint = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))  # line2.p2()
-    #print "Mid to end"
+    logger.debug("Mid to end")
     midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
     return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
 
@@ -163,16 +161,16 @@ class CurveGeneratorMixin(object):
     Note we already generated segment to first midpoint,
     and will subsequently generate segment from second midpoint.
     '''
-    #print "cusp <<<"
+    logger.debug("cusp <<<")
     try:
       # !!! Here is where we use cache
       firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
     except FreehandNullSegmentError:
-      print("??? First segment null in segmentsForCusp")
+      logger.debug("??? First segment null in segmentsForCusp")
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        print("??? Both segments null in segmentsForCusp")
+        logger.debug("??? Both segments null in segmentsForCusp")
         result = [], endPoint, []
       else:
         # Only secondSegment is not null
@@ -181,7 +179,7 @@ class CurveGeneratorMixin(object):
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        print("??? Second segment null in segmentsForCusp")
+        logger.debug("??? Second segment null in segmentsForCusp")
         result = [firstSegment,], endPoint, [False,]
       else:
         # Normal case

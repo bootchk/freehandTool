@@ -3,10 +3,14 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
+import logging
 
 from PyQt5.QtCore import QTime
 
 from history import History
+
+logger = logging.getLogger(__name__)  # module level logger
+logger.setLevel(level=logging.WARNING)
 
 
 class TurnGeneratorMixin(object):
@@ -31,7 +35,6 @@ class TurnGeneratorMixin(object):
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
-    #print "init turn"
     
     try:
       while True:
@@ -61,15 +64,15 @@ class TurnGeneratorMixin(object):
     '''
     if        position1.x() != position2.x() \
           and position1.y() != position2.y()   :
-      #print "Turn", position2
+      logger.debug("Turn %s", str(position2))
       return position2
     else:
-      #print "Not turn", position2
+      logger.debug("Not turn %s", str(position2))
       return None
     
     
   def flushTurnGenerator(self, history):
-    #print "Flush turn generator"
+    logger.debug("Flush")  
     if not history.isCollapsed():
       ''' Have position not sent. Send a turn at last known position. '''
       self.lineGenerator.send((history.end, 0)) # force a Turn 

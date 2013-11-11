@@ -4,9 +4,15 @@ Copyright 2012 Lloyd Konneker
 This is free software, covered by the GNU General Public License.
 '''
 import traceback
+import logging
+
 from ..type.pathLine import PathLine
 from .constraints import Constraints
 from history import History
+
+logger = logging.getLogger(__name__)  # module level logger
+logger.setLevel(level=logging.DEBUG)
+
 
 class LineGeneratorMixin(object):
   
@@ -35,7 +41,7 @@ class LineGeneratorMixin(object):
       while True:
         newTurn, positionElapsedTime = (yield)  # 2nd entry point of this coroutine
         #turnElapsedTime = turnClock.restart()
-        #print "Turn elapsed", turnElapsedTime
+        #logger.debug("Turn elapsed %d", turnElapsedTime)
         #line = self.smallestLineFromPath(previousTurn, turn) # TEST 
         line = self._lineFromPath(history.start, history.end, newTurn, constraints) # ,directions)
         if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
@@ -48,7 +54,7 @@ class LineGeneratorMixin(object):
             history.roll()
             didLastEmitCusp = True
           else:
-            #print "Skipping consecutive cusps"
+            logger.debug("Skipping consecutive cusps")
             pass
         elif line is not None:  # if newTurn not satisfied by vector
           self.curveGenerator.send((line, False))
@@ -66,8 +72,7 @@ class LineGeneratorMixin(object):
         
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
-      # Unexpected programming errors, which are obscured unless caught
-      #print "Exception in LineGenerator"
+      logger.critical( "Unexpected exception")  # Program error
       traceback.print_exc()
       raise
     except GeneratorExit:
@@ -76,9 +81,9 @@ class LineGeneratorMixin(object):
   
   
   def flushLineGenerator(self, history):
-    ''' The only case where history is collapsed is: never generated. '''
+    ''' The only case where history isCollapsed() is: never generated. '''
+    logger.debug("flush")
     if not history.isCollapsed():
-      #print "flush line generator"
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
       self.curveGenerator.send((PathLine(history.start, history.end), False))
     
@@ -121,7 +126,7 @@ class LineGeneratorMixin(object):
     if len(directions) > 3:
       # a path with four directions can't be approximated with one vector
       # end point is starting pixel of segment ???
-      #print "Four directions"
+      #logger.debug("Four directions")
       self.resetLineFittingFilter()
       # Note end is previousTurn, not current Turn
       return PathLine(startTurn, previousTurn)
@@ -131,7 +136,7 @@ class LineGeneratorMixin(object):
     vectorViaAllTurns = currentTurn - startTurn
       
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
-      #print "Constraint violation", constraints, "vector", vectorViaAllTurns
+      logger.debug("Line for constraint violation") # , constraints, "vector", vectorViaAllTurns
       result = self._interpolateConstraintViolating(startTurn=startTurn,
          lastSatisfyingTurn=previousTurn,
          firstNonsatisfingTurn=currentTurn)
@@ -153,12 +158,13 @@ class LineGeneratorMixin(object):
     
     if startTurn == currentTurn:
       ''' A reversal. A line from start to current would be Null. '''
-      print "Reversal"
+      logger.debug("Reversal")
       assert previousTurn != startTurn
-      return PathLine(startTurn, previousTurn)
+      result = PathLine(startTurn, previousTurn)
     else:
-      print "Force PathLine", startTurn, currentTurn
-      return PathLine(startTurn, currentTurn)
+      result = PathLine(startTurn, currentTurn)
+    logger.debug( "Force PathLine %s %s", str(startTurn), str(currentTurn))
+    return result
     
     
   def _interpolateConstraintViolating(self, startTurn, lastSatisfyingTurn, firstNonsatisfingTurn):
