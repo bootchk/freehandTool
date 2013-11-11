@@ -23,8 +23,7 @@ class PathLine(QLine):
     Initial send to CurveGenerator.
     '''
     assert isinstance(point, PointerPoint), str(point)
-    return QLine(point, point)
-  
+    return PathLine(point, point)
   
   def __init__(self, point1, point2):
     '''
@@ -33,3 +32,6 @@ class PathLine(QLine):
     assert isinstance(point1, PointerPoint)
     assert isinstance(point2, PointerPoint)
     super(PathLine, self).__init__(point1, point2)
+    
+  def isNullPathLine(self):
+    return self.dx() == 0 and self.dy() == 0

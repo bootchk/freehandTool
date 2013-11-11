@@ -28,7 +28,7 @@ class CurveGeneratorMixin(object):
   ALPHAMAX = 1.2
   
 
-  def CurveGenerator(self, startLine):
+  def CurveGenerator(self, initialLine):
     ''' 
     Takes lines, generates tuples of segments (lines or splines).
     Returns spline or cusp (two straight lines) defined between midpoints of previous two lines.
@@ -36,7 +36,8 @@ class CurveGeneratorMixin(object):
     
     More generally known as "curve fitting."
     '''
-    previousLine = startLine  # initial: assert is null PathLine
+    assert initialLine.isNullPathLine()
+    previousLine = initialLine  # initial: assert is null PathLine
     
     try:
       while True:
