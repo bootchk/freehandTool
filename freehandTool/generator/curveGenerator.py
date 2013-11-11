@@ -11,6 +11,7 @@ from ..type.pathLine import PathLine
 from ..type.freehandPoint import FreehandPoint
 from ..type.pointerPoint import PointerPoint
 from ..exception import FreehandNullSegmentError
+from history import History
 
 logger = logging.getLogger(__name__)  # module level logger
 logging.basicConfig(level=logging.DEBUG)
@@ -30,36 +31,38 @@ class CurveGeneratorMixin(object):
 
   def CurveGenerator(self, initialLine):
     ''' 
-    Takes lines, generates tuples of segments (lines or splines).
-    Returns spline or cusp (two straight lines) defined between midpoints of previous two lines.
+    Takes PathLines, generates tuples of segments (lines or splines).
+    Returns spline or cusp (two straight lines) defined between midpoints of previous two PathLines.
     On startup, previous PathLine is nullLine (!!! not None), but this still works.
     
     More generally known as "curve fitting."
     '''
     assert initialLine.isNullPathLine()
-    previousLine = initialLine  # initial: assert is null PathLine
+    history = History(initialLine)
+    #previousLine = 
     
     try:
       while True:
-        line, isLineForced = (yield)
-        assert isinstance(line, PathLine), "input is a PathLine"
+        newPathLine, isLineForced = (yield)
+        assert isinstance(newPathLine, PathLine), "input is a PathLine"
         if isLineForced:
-          ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between lines.'''
-          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(previousLine, line)
+          ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between PathLines.'''
+          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(history.end, newPathLine)
           '''
           !!! next element from midpoint of nullLine
           at end point of path, but as a PointerPoint
           not as pathEndPoint, which is a FreehandPoint
           '''
-          previousLine = PathLine.nullPathLine(PointerPoint(line.p2())) # pathEndPoint) 
+          # Make history show null pathLine created here, not yielded
+          history.updateEnd(PathLine.nullPathLine(PointerPoint(newPathLine.p2()))) # pathEndPoint) 
           
           self.path.appendSegments(segments, segmentCuspness=cuspness)
         else:
           ''' Fit to path, possibly a cusp. '''
-          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToMid(previousLine, line)  
-          # segments = nullcurveFromLines(previousLine, line) # TEST
-          previousLine = line  # Roll forward
-          # don't roll up the following and the one above, we want distinct traceback on errors
+          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToMid(history.end, newPathLine)  
+          # segments = nullcurveFromLines(history.end, newPathLine) # TEST
+          history.updateEnd(newPathLine)
+          # don't roll up the following stmt and stmt above, we want distinct traceback on errors
           self.path.appendSegments(segments, segmentCuspness=cuspness)
         
         self.lastEndPointGenerated = pathEndPoint # !!! global cache
@@ -157,8 +160,8 @@ class CurveGeneratorMixin(object):
   def segmentsForCusp(self, cuspPoint, endPoint):
     '''
     Return list of segments for sharp cusp. Return two straight LinePathElements and endPoint.
-    from midpoints of two generating lines (not passed end of path, and endPoint) 
-    to point where generating lines meet (cuspPoint).
+    from midpoints of two generating PathLines (not passed end of path, and endPoint) 
+    to point where generating PathLines meet (cuspPoint).
     Note we already generated segment to first midpoint,
     and will subsequently generate segment from second midpoint.
     '''

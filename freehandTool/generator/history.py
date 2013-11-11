@@ -12,6 +12,7 @@ class History():
   Callers typically either call:
   - roll(); update(new)
   - collapse(new)
+  - update()  (when caller only uses one past state.)
   These do not result in the same history.
   
   roll() should NOT be called without subsequently calling update()
