@@ -243,10 +243,16 @@ from PyQt5.QtCore import QObject
 from .generator.turnGenerator import TurnGeneratorMixin
 from .generator.lineGenerator import LineGeneratorMixin
 from .generator.curveGenerator import CurveGeneratorMixin
-from .segmentString.segment import LineSegment
+#from .segmentString.segment import LineSegment
 from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
 
+
+# uncomment/comment this to enable/disable logging across all loggers in the app.
+# separate loggers have their own level.
+# This should be uncommented for a shipping app
+#import logging
+#logging.disable(logging.WARNING)
 
 '''
 Generators are mixin behavior.

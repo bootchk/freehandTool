@@ -26,3 +26,6 @@ class PointerPoint(QPoint):
     '''
     return self.x()*other.y() - self.y()*other.x()
   
+
+  def __copy__(self):
+    return PointerPoint(self.x(), self.y())

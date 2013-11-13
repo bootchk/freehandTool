@@ -7,10 +7,11 @@ import logging
 
 from PyQt5.QtCore import QTime
 
-from history import History
+from .utils.history import History
+from .utils.reversalDetector import ReversalDetector
 
 logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.WARNING)
+logger.setLevel(level=logging.DEBUG)
 
 
 class TurnGeneratorMixin(object):
@@ -36,11 +37,15 @@ class TurnGeneratorMixin(object):
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
     
+    self.reversalDetector = ReversalDetector(initialPosition)
+    
     try:
       while True:
         newPosition = (yield) # 2nd entry point of this coroutine
         positionElapsedTime = positionClock.restart()
-        turn = self.detectTurn(history.end, newPosition)
+        ##turn = self.detectTurn(history.end, newPosition)
+        # !!! not assert newPosition is different from any prior position, including initialPosition
+        turn = self.detectTurn(newPosition)
         if turn is not None:
           self.lineGenerator.send((turn, positionElapsedTime))
           history.collapse(newPosition)
@@ -51,25 +56,32 @@ class TurnGeneratorMixin(object):
       self.flushTurnGenerator(history)
       
       
-
-  
-  def detectTurn(self, position1, position2):
+  def detectTurn(self, position):
     ''' 
-    Return position2 if it turns, i.e. if not on horiz or vert axis with position1, else return None. 
+    Return position2 if it is diagonal to reversalDetector's start
+    OR if it is a reversal from 
     
-    !!! A diagonal pointer track that reverses (returns from whence it came) generates turns.
-    That is, turns are not just left or right, but also reversal.
-    
-    !!! A horizontal or vertical track that reverses does not generate a turn.
     '''
-    if        position1.x() != position2.x() \
-          and position1.y() != position2.y()   :
-      logger.debug("Turn %s", str(position2))
-      return position2
+    """
+    offAxisPosition = axisDeterminer.detectOffAxis(position1, position2)
+    if offAxisPosition is not None:
+      result = offAxisPosition
+      self.reversalDetector.reset(position2)
     else:
-      logger.debug("Not turn %s", str(position2))
-      return None
+      result = self.reversalDetector.detect(position2)
+    assert result is None or result is not None
+    return result
+    """
+    if self.reversalDetector.isDiagonal(position):
+      result = position
+      self.reversalDetector.reset(position)
+    else:
+      result = self.reversalDetector.detect(position)
+      # if result is not None, reversalDetector was reset to an extreme position
+    assert result is None or result is not None
+    return result
     
+  
     
   def flushTurnGenerator(self, history):
     logger.debug("Flush")  

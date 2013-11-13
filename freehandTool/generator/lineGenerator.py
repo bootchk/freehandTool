@@ -7,8 +7,8 @@ import traceback
 import logging
 
 from ..type.pathLine import PathLine
-from .constraints import Constraints
-from history import History
+from .utils.constraints import Constraints
+from .utils.history import History
 
 logger = logging.getLogger(__name__)  # module level logger
 logger.setLevel(level=logging.DEBUG)

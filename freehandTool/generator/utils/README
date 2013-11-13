@@ -1,0 +1,9 @@
+These are utility modules used only by generators.
+Generators also use modules in package 'type.'
+CurveGenerator also uses packages 'segmentString', 'exception'
+
+History used by all generators.
+
+Constraints is used by LineGenerator.
+
+ReversalDetector is used by TurnGenerator.

@@ -11,7 +11,8 @@ from ..type.pathLine import PathLine
 from ..type.freehandPoint import FreehandPoint
 from ..type.pointerPoint import PointerPoint
 from ..exception import FreehandNullSegmentError
-from history import History
+
+from .utils.history import History
 
 logger = logging.getLogger(__name__)  # module level logger
 logging.basicConfig(level=logging.DEBUG)
