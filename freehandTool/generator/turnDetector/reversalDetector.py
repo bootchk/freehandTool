@@ -5,10 +5,11 @@ This is free software, covered by the GNU General Public License.
 '''
 import logging
 
-from .axis import axis
+from ..utils.axis import Axis
 
 logger = logging.getLogger(__name__)  # module level logger
 logger.setLevel(level=logging.DEBUG)
+
 
 class ReversalDetector():
   '''
@@ -21,6 +22,7 @@ class ReversalDetector():
   
   def __init__(self, initialPosition):
     self.reset(initialPosition)
+    self.axis = Axis()
     
     
   def _resetGrowthParameters(self):
@@ -33,7 +35,7 @@ class ReversalDetector():
   def reset(self, newStartPosition):
     logger.debug("reset %s", str(newStartPosition))
     self._resetGrowthParameters()
-    axis.reset(newStartPosition)
+    self.axis.reset(newStartPosition)
     self.extremePosition = newStartPosition
     # assert self.size() == 1
   
@@ -56,8 +58,34 @@ class ReversalDetector():
   
   def isDiagonal(self, newPosition):
     ''' Delegate to axis. '''
-    result = axis.isDiagonalToStart(newPosition)
+    result = self.axis.isPositionDiagonal(newPosition)
     logger.debug("isDiagonal %s returns %s", str(newPosition), str(result))
+    return result
+  
+  
+  def detectTurn(self, position, referencePosition=None):
+    ''' 
+    Return position2 if it is diagonal to reversalDetector's start
+    OR if it is a reversal from 
+    
+    '''
+    """
+    offAxisPosition = axisDeterminer.detectOffAxis(position1, position2)
+    if offAxisPosition is not None:
+      result = offAxisPosition
+      self.reversalDetector.reset(position2)
+    else:
+      result = self.reversalDetector.detect(position2)
+    assert result is None or result is not None
+    return result
+    """
+    if self.reversalDetector.isDiagonal(position):
+      result = position
+      self.reversalDetector.reset(position)
+    else:
+      result = self.reversalDetector.detect(position)
+      # if result is not None, reversalDetector was reset to an extreme position
+    assert result is None or result is not None
     return result
   
   
@@ -71,22 +99,22 @@ class ReversalDetector():
     Else: none, and grow.
     '''
     logger.debug("detect %s", str(newPosition))
-    assert axis.isAnySameAxis(newPosition)
-    # Position could be equal to axis.startPosition
+    assert not self.axis.isPositionDiagonal(newPosition)
+    # Cannot assert self.axis.isOnKnownAxis(): newPosition could be equal to self.axis.startPosition
     
-    if not axis.isKnown():
-      axis.determine(newPosition)
-      # If startPosition == newPosition, still not axis.isKnown()
-      if axis.isKnown():
+    if not self.axis.isKnown():
+      self.axis.determine(newPosition)
+      # If startPosition == newPosition, still not self.axis.isKnown()
+      if self.axis.isKnown():
         # We just determined axis, also determine limits
         self._setInitialLimits(newPosition)
       
-    if not axis.isKnown():
+    if not self.axis.isKnown():
       result = None
     else:
       # axis is known and limits are known
       ## onAxisValue = self._tryOnAxisValue(newPosition)
-      onAxisValue = axis.onAxisValue(newPosition)
+      onAxisValue = self.axis.onAxisValue(newPosition)
       if self._adjustLimitsOrReverse(value = onAxisValue, newPosition=newPosition):
         result = self.extremePosition
         self._resetAfterReversal(newPosition=newPosition)
@@ -95,47 +123,47 @@ class ReversalDetector():
     return result
   
   """
-  # TODO assert axis.isKnown()
+  # TODO assert self.axis.isKnown()
   def _tryOnAxisValue(self, position):
     ''' position's value on self's axis, or None. '''
-    if not axis.isKnown():
+    if not self.axis.isKnown():
       if self.startPosition == position:
         # No axis determinable yet
         result = None
       else:
-        axis.determine(position)
-        assert axis.isKnown()
+        self.axis.determine(position)
+        assert self.axis.isKnown()
         self._setInitialLimits(position)
-        result = axis.onAxisValue(position)
+        result = self.axis.onAxisValue(position)
     else:
-      result = axis.onAxisValue(position)
+      result = self.axis.onAxisValue(position)
     return result
   """
     
     
   def _setInitialLimits(self, position):
     '''
-    Two separate positions (axis.axisStart and position) are just now known.
+    Two separate positions (self.axis.axisStart and position) are just now known.
     Establish limits from them, on the axis they share.
     '''
-    assert axis.isKnown()
-    assert axis.isAnySameAxis(position)
-    if axis.isVertical():
+    assert self.axis.isKnown()
+    assert self.axis.isOnKnownAxis(position)
+    if self.axis.isVertical():
       # x's are same, limits are y
-      if axis.axisStart.y() < position.y():
-        self.lowerLimit = axis.axisStart.y()
+      if self.axis.axisStart.y() < position.y():
+        self.lowerLimit = self.axis.axisStart.y()
         self.upperLimit = position.y()
       else:
         self.lowerLimit = position.y()
-        self.upperLimit = axis.axisStart.y()
+        self.upperLimit = self.axis.axisStart.y()
     else:
       # y's are same, limits are x
-      if axis.axisStart.x() < position.x():
-        self.lowerLimit = axis.axisStart.x()
+      if self.axis.axisStart.x() < position.x():
+        self.lowerLimit = self.axis.axisStart.x()
         self.upperLimit = position.x()
       else:
         self.lowerLimit = position.x()
-        self.upperLimit = axis.axisStart.x()
+        self.upperLimit = self.axis.axisStart.x()
     assert self.lowerLimit is not None and self.upperLimit is not None and self.lowerLimit != self.upperLimit
     
       

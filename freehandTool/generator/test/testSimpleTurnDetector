@@ -1,0 +1,43 @@
+
+to test:
+>cd freehandTool/freehandTool/generator
+>python
+import docttest
+doctest.testfile("generator/test/testSimpleTurnDetector")
+
+>>> from generator.turnDetector.simpleTurnDetector import SimpleTurnDetector
+>>> from PyQt5.QtCore import QPoint
+>>> rp = QPoint(1,1)
+>>> td = SimpleTurnDetector(rp)
+
+The reference point from reference opint is not a turn.
+>>> result = td.detect(rp, rp)
+>>> print result
+None
+
+A point horizontal from reference point is not a turn.
+>>> result = td.detect(QPoint(2,1), rp)
+>>> print result
+None
+
+A point vertical from reference point is not a turn.
+>>> result = td.detect(QPoint(1,2), rp)
+>>> print result
+None
+
+A point vertical from reference point at a great distance is not a turn.
+>>> result = td.detect(QPoint(1,5), rp)
+>>> print result
+None
+
+A point diagonal to reference point is a turn.
+>>> result = td.detect(QPoint(2,2), rp)
+>>> print result
+PyQt5.QtCore.QPoint(2, 2)
+
+A point diagonal to reference point at a distance is a turn.
+>>> result = td.detect(QPoint(5,5), rp)
+>>> print result
+PyQt5.QtCore.QPoint(5, 5)
+
+

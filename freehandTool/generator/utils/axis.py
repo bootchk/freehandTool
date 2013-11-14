@@ -35,7 +35,7 @@ class Axis():
     
   
   def determine(self, position):
-    ''' Determine my axis from a position that is not the same as axisStart. '''
+    ''' Determine my axis from a position that is not the same as axisStart and is not diagonal to axisStart. '''
     assert not self.isKnown(), 'Should only be determined once'
     assert self.axisStart is not None
     assert self.axisStart != position, 'Cannot determine axis from same as start.'
@@ -85,19 +85,35 @@ class Axis():
       logger.debug("Not Off-axis %s", str(position2))
       return None
   """
-  def isDiagonalToStart(self, position):
+  def isPositionDiagonal(self, position):
     ''' 
-    Is diagonal in extended sense:
+    Is position diagonal to self in extended sense:
      not on known axis
-     OR when axis is not known, diagonal to start. 
+     OR when axis is not known, diagonal to axisStart. 
      '''
     assert self.axisStart is not None
     if self.isKnown():
-      result = self.isOnKnownAxis(position)
+      result = not self.isOnKnownAxis(position)
     else:
-      result = self.isAnySameAxis(self.axisStart, position)
+      result = self.isDiagonalToStart(position)
+    return result
+
+  def isDiagonalToStart(self, position):
+    return not self.isAnySameAxis(self.axisStart, position)
+  
+  def isOnKnownAxis(self, position):
+    assert self.isKnown()
+    if self.isHorizontal():
+      result = self.isSameHorizontalAxis(self.axisStart, position)
+    else:
+      result = self.isSameVerticalAxis(self.axisStart, position)
     return result
   
+  '''
+  Methods taking two positions.
+  
+  These are currently local, but not prefixed with _ ???
+  '''
   def isSameHorizontalAxis(self, position1, position2):
     ''' same horizontal axis implies y()'s are same. '''
     return position1.y() == position2.y()
@@ -108,14 +124,6 @@ class Axis():
   def isAnySameAxis(self, position1, position2):
     ''' Are both positions on any same axis (both on horizontal or both on vertical) '''
     return self.isSameHorizontalAxis(position1, position2) or self.isSameVerticalAxis(position1, position2)
-
-  def isOnKnownAxis(self, position):
-    assert self.isKnown()
-    if self.isHorizontal(position):
-      result = self.isSameHorizontalAxis(self.axisStart, position)
-    else:
-      result = self.isSameVerticalAxis(self.axistStart, position)
-    return result
   
   """              
   def isOnAxis(self, position):
@@ -123,5 +131,3 @@ class Axis():
     return self.isAnySameAxis(self.axisStart, position)
   """
     
-# singleton
-axis = Axis()

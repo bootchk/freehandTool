@@ -8,7 +8,10 @@ import logging
 from PyQt5.QtCore import QTime
 
 from .utils.history import History
-from .utils.reversalDetector import ReversalDetector
+
+# Alternatives: uncomment only one
+from .turnDetector.simpleTurnDetector import SimpleTurnDetector as TurnDetector
+#from .turnDetector.reversalDetector import ReversalDetector as TurnDetector
 
 logger = logging.getLogger(__name__)  # module level logger
 logger.setLevel(level=logging.DEBUG)
@@ -16,9 +19,10 @@ logger.setLevel(level=logging.DEBUG)
 
 class TurnGeneratorMixin(object):
   '''
-  Method name is capitalized because method *appears* to be a class.
+  Mixin behaviour for freehand: generate turns from stream of positions.
   '''
   
+  # Method name is capitalized because method *appears* to be a class.
   def TurnGenerator(self, initialPosition):
     '''
     Freehand send()'s PointerPosition when user moves graphics pointer.
@@ -31,13 +35,14 @@ class TurnGeneratorMixin(object):
     
     close() may come before the first send() e.g if user just clicks pointer without moving it.
     '''
+    # See below: history.start is position the last turn was generated, history.end is most recent position
     history = History(initialPosition)
     
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
     
-    self.reversalDetector = ReversalDetector(initialPosition)
+    self.turnDetector = TurnDetector(initialPosition)
     
     try:
       while True:
@@ -45,42 +50,15 @@ class TurnGeneratorMixin(object):
         positionElapsedTime = positionClock.restart()
         ##turn = self.detectTurn(history.end, newPosition)
         # !!! not assert newPosition is different from any prior position, including initialPosition
-        turn = self.detectTurn(newPosition)
+        turn = self.turnDetector.detect(newPosition, referencePosition=history.start)
         if turn is not None:
           self.lineGenerator.send((turn, positionElapsedTime))
           history.collapse(newPosition)
-        else: # path is still on an axis with history.end: wait
+        else: # path is still on an axis with history.start: wait
           history.updateEnd(newPosition)
     # Not catching general exceptions, have not found a need for it.
     except GeneratorExit:
       self.flushTurnGenerator(history)
-      
-      
-  def detectTurn(self, position):
-    ''' 
-    Return position2 if it is diagonal to reversalDetector's start
-    OR if it is a reversal from 
-    
-    '''
-    """
-    offAxisPosition = axisDeterminer.detectOffAxis(position1, position2)
-    if offAxisPosition is not None:
-      result = offAxisPosition
-      self.reversalDetector.reset(position2)
-    else:
-      result = self.reversalDetector.detect(position2)
-    assert result is None or result is not None
-    return result
-    """
-    if self.reversalDetector.isDiagonal(position):
-      result = position
-      self.reversalDetector.reset(position)
-    else:
-      result = self.reversalDetector.detect(position)
-      # if result is not None, reversalDetector was reset to an extreme position
-    assert result is None or result is not None
-    return result
-    
   
     
   def flushTurnGenerator(self, history):
