@@ -63,6 +63,6 @@ class AlternateColorPaintingQGPI(object):
         
       # Alternate colors
       if i%2 == 1:
-        painter.setPen(Qt.blue)
+        painter.setPen(Qt.green)
       else:
         painter.setPen(Qt.red)

@@ -67,10 +67,11 @@ from .cuspness import Cuspness
 
   
 ## For testing use: 
-##from alternatePaintingQGPI import AlternateColorPaintingQGPI
-##class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
+from alternatePaintingQGPI import AlternateColorPaintingQGPI
+class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
 
-class SegmentString(QGraphicsPathItem):
+## For production use:
+##class SegmentString(QGraphicsPathItem):
   '''
   GraphicsItem that is a sequence of Segments.
   

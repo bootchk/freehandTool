@@ -16,9 +16,6 @@ logger.setLevel(level=logging.DEBUG)
 
 class LineGeneratorMixin(object):
   
-  # If elapsed time in milliseconds between pointer moves is greater, generate cusp-like instead of smooth.  
-  MAX_POINTER_ELAPSED_FOR_SMOOTH = 100
-  
   def LineGenerator(self, initialPosition):
     '''
     Generate PathLine sequence from Turn sequence.
@@ -31,44 +28,38 @@ class LineGeneratorMixin(object):
     - on startup, previousTurn and startTurn are same
     - rolls forward previousTurn every iter, instead of on send().
     '''
-    history = History(initialPosition)
-    constraints = Constraints()
-    didLastEmitCusp = False # state
+    turnHistory = History(initialPosition)
+    self.constraints = Constraints()
+  
     # directions = Directions()
     #turnClock = QTime.currentTime()  # note restart returns elapsed
     #turnClock.restart()
     try:
       while True:
-        newTurn, positionElapsedTime = (yield)  # 2nd entry point of this coroutine
+        newTurn, isForced = (yield)  # 2nd entry point of this coroutine
         #turnElapsedTime = turnClock.restart()
         #logger.debug("Turn elapsed %d", turnElapsedTime)
         #line = self.smallestLineFromPath(previousTurn, turn) # TEST 
-        line = self._lineFromPath(history.start, history.end, newTurn, constraints) # ,directions)
-        if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
-          # User turned slowly, send a forced PathLine which subsequently makes cusp-like graphic
-          # Effectively, eliminate generation lag by generating a LinePathElement.
-          if not didLastEmitCusp:
-            forcedLine = self._forceLineFromPath(history.start, history.end, newTurn, constraints)
-            self.curveGenerator.send((forcedLine, True))
-            ## For debug: self.labelLine("F" + str(positionElapsedTime), newTurn)
-            history.roll()
-            didLastEmitCusp = True
-          else:
-            logger.debug("Skipping consecutive cusps")
-            pass
-        elif line is not None:  # if newTurn not satisfied by vector
-          self.curveGenerator.send((line, False))
-          # self.labelLine(str(positionElapsedTime), newTurn)
-          history.roll()
-          didLastEmitCusp = False
         
-        # else current path (all turns) still satisfied by a PathLine: wait
-        history.updateEnd(newTurn)
-        '''
-        If sent a pathLine to oldHistory.end, new history is (oldHistory.end, newTurn)
-        Else new history is (oldHistory.start, newTurn) i.e. discarded intermediate Turns.
-        '''
-        assert not history.isCollapsed()
+        ##if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
+        if isForced:
+          self._sendForcedLine(newTurn, turnHistory)
+          # assert turnHistory was updated by _sendForcedLine()
+        else:
+          line = self._lineFromPath(turnHistory.start, turnHistory.end, newTurn, self.constraints) # ,directions)
+          if line is not None:  # if newTurn not satisfied by vector
+            self.curveGenerator.send((line, False))
+            # self.labelLine(str(positionElapsedTime), newTurn)
+            turnHistory.roll()
+        
+          # else current path (all turns) still satisfied by a PathLine: wait
+          turnHistory.updateEnd(newTurn)
+          
+          '''
+          If sent a pathLine to oldHistory.end, new turnHistory is (oldHistory.end, newTurn)
+          Else new turnHistory is (oldHistory.start, newTurn) i.e. discarded intermediate Turns.
+          '''
+          assert not turnHistory.isCollapsed()
         
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
@@ -76,22 +67,32 @@ class LineGeneratorMixin(object):
       traceback.print_exc()
       raise
     except GeneratorExit:
-      self.flushLineGenerator(history)  # self is FreehandTool having three generators with distinctly named flush methods
+      self.flushLineGenerator(turnHistory)  # self is FreehandTool having three generators with distinctly named flush methods
       
+      
+  def _sendForcedLine(self, newTurn, turnHistory):
+
+    # User paused, send a forced PathLine which subsequently makes cusp-like graphic
+    # Effectively, eliminate generation lag by generating a LinePathElement.
+    forcedLine = self._forceLineFromPath(turnHistory.start, turnHistory.end, newTurn, self.constraints)
+    self.curveGenerator.send((forcedLine, True))
+    print("Forced line")
+    ## For debug: self.labelLine("F" + str(positionElapsedTime), newTurn)
+    turnHistory.roll()
+    
   
-  
-  def flushLineGenerator(self, history):
+  def flushLineGenerator(self, turnHistory):
     ''' 
-    The only case where history isCollapsed()==True is the case where we never generated any PathLines. 
+    The only case where turnHistory isCollapsed()==True is the case where we never generated any PathLines. 
     IOW, the 'if branch' below is taken for all but that rare case.
     '''
     logger.debug("flush")
-    if not history.isCollapsed():
+    if not turnHistory.isCollapsed():
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
-      self.curveGenerator.send((PathLine(history.start, history.end), False))
+      self.curveGenerator.send((PathLine(turnHistory.start, turnHistory.end), False))
       
-    ''' Cause CurveGenerator to generate a segmment to history.end Turn, which is the end of the PointerTrack.'''
-    self.curveGenerator.send((PathLine.nullPathLine(history.end), False))
+    ''' Cause CurveGenerator to generate a segmment to turnHistory.end Turn, which is the end of the PointerTrack.'''
+    self.curveGenerator.send((PathLine.nullPathLine(turnHistory.end), False))
       
     
   

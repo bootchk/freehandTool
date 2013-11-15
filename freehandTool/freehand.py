@@ -26,6 +26,8 @@ Tags:
 Incremental line tracing
 ========================
 Tracing means generating vector graphics from bitmaps.
+A bitmap is a 'batch', and tracing it is a 'batch' operation: all data is known before you begin.
+
 Incremental, also called dynamic, means generate graphics as a user works,
 before the user has completed a stroke (say by mouseReleaseEvent.)
 Compare to other freehand tools that draw (not render) pixels until end of tool,
@@ -60,6 +62,75 @@ Pointer events are pushed (send()) into the pipe and each filter pushes any resu
 Each filter may maintain history (often just one previous) of its input events,
 rolling forward when it recognizes an object that the next filter needs.
 The final filter generates finished graphic objects.
+
+
+Flushing the pipe
+=================
+
+When the user is done (mouse button up), the pipe still holds data (positions, turns, pathLines)
+that have not been traced into segments (straight lines or curves.)
+In other words, the pipeline lags. 
+Closing the pipe flushes that data.
+That generate more segments (without new pointer positions)
+The flushed generated segment string extends to the last PointerPoint.
+
+Flushing the line generator sends a NullPathLine (infinitely short, a point, but still conceptually a line.)
+The penultimate segment is a curve to the middle of that NullPathLine,
+and the final (head) segment is a very short straight LineSegment.
+(??? TODO Post process to eliminate that.)
+
+But also, the pipe may be flushed when the user pauses.  See next section...
+
+
+Using timing in incremental line tracing
+========================================
+
+A bitmap usually has no timing data, so batch tracing doesn't use timing.
+But incremental line tracing can use the timing of positions in the pointer track.
+
+In particular, if the user pauses, we flush the pipe.
+This means that no data that follows can affect the tracing (smoothness) of what is already drawn.
+The user sees it as the rendered segments catching up to the pointer position
+(or the same thing, the ghost head of the drawn line collapsing to the pointer position.)
+
+In other words, the user can pause to make a cusp (a hard corner or even a slight but hard inflection ).
+
+The timing of a user's stroke has meaning or intention.
+When a user strokes rapidly, they might intend a smooth curve (or not care if it is accurate.)
+When a user slows a stroke and turns, they might intend less smoothing.
+But we are NOT altering the smoothing parameter dynamically based on the speed of drawing.
+(TODO should we?  This is a user interface issue.)
+
+How flushing for a pause works
+==============================
+
+The feeder to the pipe (freehandTool.py) includes a timer,
+so that it can know when the user has paused.
+When the timer timeouts, we resend the last position received from the pointer, as a forcing or flushing event.
+That works through the entire pipe, flushing it (each portion of the pipe can receive a forcing.)
+The pipe is flushed but not closed.
+
+(In early designs, the turn generator of the pipe had the timer. But the feeder is the best place for the timer.)
+
+
+Reversals and spikes
+====================
+
+If the use reverses the pointer back along the same track,
+the generated segment string should extend to the extremity.
+Such a reversal could also be called a spike.
+In batch tracing, spikes are usually filtered out, they are bad 'hairs' or noise on a block of pixels.
+
+The original SimpleTurnDetector didn't properly handle spikes.
+The ReverseDetector now does.
+
+But those only handle spikes along the horizontal and vertical axis.
+You can still see spikes not handled if the user reverses along a diagonal (quickly, without pausing.)
+Drawing along a diagonal generates a sequence of turns.
+When the user draws a diagonal spike, the reversing turns may still fall within the constraints of the LineGenerator.
+
+TODO change the LineGenerator to detect extreme turns (in distance from the start turn) and generate lines to them
+instead of to the turn that violates constraints.
 
 
 potrace
@@ -99,14 +170,6 @@ there simply is not enough machine resources (in one thread) to do better.
 (Another fix might be a threaded implementation.)
 
 
-Timing
-======
-
-The timing of a user's stroke has meaning or intention.
-When a user strokes rapidly, they intend a smooth curve.
-When a user slows a stroke and turns, they might intend a cusp.
-But a slow diagonal generates many PathTurns, which should not generate a cusp.
-
 
 Ghosting
 =======
@@ -121,15 +184,6 @@ Note when shutting down the pipeline, final segments are generated and
 a final head is added between the end of the pipeline generated path and final pointer position.
 The final head is NOT the same as the ghost.
 
-
-Closing the pipeline
-====================
-The pipeline lags. Shutting down the pipeline may generate more segments (without new pointer positions)
-but also may leave the generating segment string short of the last PointerPoint.
-So we generate a final head segment, from several alternatives:
-- a straight line
-- several straight lines (an untraced pointer track, similar to the head.) (Not implemented.)
-- another algorithm to fit a curve? (Not implemented.)
 
 
 Null segments
@@ -238,7 +292,8 @@ import sys
 
 # !!! QTime for timing of cusps
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, QTimer
+
 
 from .generator.turnGenerator import TurnGeneratorMixin
 from .generator.lineGenerator import LineGeneratorMixin
@@ -274,6 +329,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.path = None
     
     self._isGenerating = False
+    
+    self.createTimer()
     
     '''
     Cache last point generated.  CurveGenerator uses this.  In frame (CS) of CurveGenerator
@@ -325,13 +382,16 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
       self.curveGenerator.close()
       self.setGenerating(False)
     # else ignore pointerRelease without prior pointerPress, race?
-
+    
+  
 
   def pointerMoveEvent(self, pointerEvent):
     ''' Client feeds pointerMoveEvent into a pipe. '''
     if self.isGenerating():
       try:
-        self.turnGenerator.send(pointerEvent.viewPos)  # Feed pipe
+        position = pointerEvent.viewPos
+        self.restartTimer(position)
+        self.turnGenerator.send((position, False))  # Feed pipe, not forced
       except StopIteration:
         '''
         While user is moving pointer with pointer button down, we don't expect pipe to stop.
@@ -354,10 +414,12 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   def pointerPressEvent(self, pointerEvent):
     ''' Client call to start freehand drawing. '''
     self._initFilterPipe(pointerEvent.viewPos)
+    # Do not start timer until pointerMoveEvents
 
   
   def pointerReleaseEvent(self, pointerEvent):
     ''' Client call to end freehand drawing. '''
+    self.stopTimer()
     self._closeFilterPipe()
     self.pathHeadGhost.hide()
     #OLD self._createFinalSegment(pointerEvent)
@@ -371,6 +433,43 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   def setGenerating(self, truth):
     ''' Set flag indicating closed generators, not accepting pointerEvents. '''
     self._isGenerating = truth
+  
+  
+  '''
+  Timer
+  
+  If elapsed time in milliseconds between pointer moves is greater, flush pipeline 
+  TODO make this a parameter, and use it below.
+  MAX_POINTER_ELAPSED_FOR_SMOOTH = 100
+  '''
+  def createTimer(self):
+    self.timer = QTimer()
+    self.timer.setSingleShot(True)
+    self.timer.timeout.connect(self.handleTimeout)
+    
+  def restartTimer(self, position):
+    '''
+    Start a timer showing how long we have been at position (without receiving another position.)
+    '''
+    self.lastSentPosition = position
+    self.timer.stop()
+    self.timer.start(300)
+  
+  def stopTimer(self):
+    self.timer.stop()
+  
+  def handleTimeout(self):
+    ''' 
+    Timeout after last pointerMoveEvent. 
+    
+    Resend the same position we last sent.
+    It is only resend once (since timer is not restarted until pointerMoveEvent)
+    but another pointerMoveEvent may also be (and send) the same position.
+    '''
+    #print("Timeout")
+    # Resend lastSentPosition, forced (flush)
+    self.turnGenerator.send((self.lastSentPosition, True))
+    
     
     
   """

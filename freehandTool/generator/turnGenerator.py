@@ -39,24 +39,32 @@ class TurnGeneratorMixin(object):
     # See below: history.start is position the last turn was generated, history.end is most recent position
     history = History(initialPosition)
     
+    """
     positionClock = QTime.currentTime()  # note restart returns elapsed
     positionClock.restart()
     # I also tried countPositionsSinceTurn to solve lag for cusp-like
+    """
     
     self.turnDetector = TurnDetector(initialPosition)
     
     try:
       while True:
-        newPosition = (yield) # 2nd entry point of this coroutine
-        positionElapsedTime = positionClock.restart()
-        ##turn = self.detectTurn(history.end, newPosition)
+        newPosition, isForced = (yield) # 2nd entry point of this coroutine
         # !!! not assert newPosition is different from any prior position, including initialPosition
-        turn = self.turnDetector.detect(newPosition, referencePosition=history.start)
-        if turn is not None:
-          self.lineGenerator.send((turn, positionElapsedTime))
+        
+        ## positionElapsedTime = positionClock.restart()
+        
+        if isForced:
+          # Flush
+          self.lineGenerator.send((newPosition, True))
           history.collapse(newPosition)
-        else: # path is still on an axis with history.start: wait
-          history.updateEnd(newPosition)
+        else:
+          turn = self.turnDetector.detect(newPosition, referencePosition=history.start)
+          if turn is not None:
+            self.lineGenerator.send((turn, False))
+            history.collapse(newPosition)
+          else: # path is still on an axis with history.start: wait
+            history.updateEnd(newPosition)
     # Not catching general exceptions, have not found a need for it.
     except GeneratorExit:
       self.flushTurnGenerator(history)
