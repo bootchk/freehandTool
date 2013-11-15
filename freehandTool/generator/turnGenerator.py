@@ -10,11 +10,12 @@ from PyQt5.QtCore import QTime
 from .utils.history import History
 
 # Alternatives: uncomment only one
-from .turnDetector.simpleTurnDetector import SimpleTurnDetector as TurnDetector
-#from .turnDetector.reversalDetector import ReversalDetector as TurnDetector
+#from .turnDetector.simpleTurnDetector import SimpleTurnDetector as TurnDetector
+from .turnDetector.reverseDetector import ReverseDetector as TurnDetector
 
 logger = logging.getLogger(__name__)  # module level logger
 logger.setLevel(level=logging.DEBUG)
+
 
 
 class TurnGeneratorMixin(object):

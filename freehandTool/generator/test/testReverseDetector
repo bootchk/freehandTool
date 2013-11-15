@@ -1,0 +1,126 @@
+
+to test:
+>cd freehandTool/freehandTool/generator
+>python
+import docttest
+doctest.testfile("generator/test/testReverseDetector")
+
+
+Note that this is one long test, not many individual tests,
+since ReverseDetector keeps its own history and resets itself.
+We could establish new ReverseDetectors and split up this test.
+
+
+>>> from generator.turnDetector.reverseDetector import ReverseDetector
+>>> from PyQt5.QtCore import QPoint
+>>> rp = QPoint(1,1)
+
+A ReverseDetector is initialized with a reference point.
+>>> td = ReverseDetector(rp)
+
+The reference point from reference point is not a turn,
+but also doesn't establish an orientation.
+>>> result = td.detect(rp)
+>>> print result
+None
+
+A point horizontal from reference point is not a turn, but establishes an orientation.
+>>> result = td.detect(QPoint(2,1))
+>>> print result
+None
+
+A point off the established axis IS a turn and resets the axis.
+>>> result = td.detect(QPoint(1,2))
+>>> print result
+PyQt5.QtCore.QPoint(1, 2)
+
+A point vertical from previous turn at a great distance is NOT a turn,
+but establishes orientation: a vertical axis (1,y)
+>>> result = td.detect(QPoint(1,5))
+>>> print result
+None
+
+A point diagonal from previous turn IS a turn,
+and resets axis, leaving its orientation undetermined.
+>>> result = td.detect(QPoint(2,2))
+>>> print result
+PyQt5.QtCore.QPoint(2, 2)
+
+A point diagonal to previous turn at a distance IS a turn.
+>>> result = td.detect(QPoint(5,5))
+>>> print result
+PyQt5.QtCore.QPoint(5, 5)
+
+A point horizontally aligned with previous turn, but at a great distance is NOT a turn,
+and establishes orientation but not direction.
+>>> result = td.detect(QPoint(6,5))
+>>> print result
+None
+
+A point in the opposite direction of previous two horizontal point is NOT a turn,
+and establishes direction to the left.
+Sequence is 5,6,4
+>>> result = td.detect(QPoint(4,5))
+>>> print result
+None
+
+A point in the opposite direction of previous three horizontal points, but in the limits, is NOT a turn.
+Sequence is 5,6,4,5
+>>> result = td.detect(QPoint(5,5))
+>>> print result
+None
+
+A point in the opposite direction of previous three horizontal points IS a REVERSING turn,
+at the left extreme: 4.
+Sequence is 5,6,4,5,6
+>>> result = td.detect(QPoint(6,5))
+>>> print result
+PyQt5.QtCore.QPoint(4, 5)
+
+The axis is still horizontal, limits are now 4,6, and direction is to the right.
+>>> td.dumpState()
+lower 4 upper 6
+('extreme PyQt5.QtCore.QPoint(6, 5) isGrowingLower', 'False')
+
+Point to the left again is also a turn.
+Effective sequence is 4,5,6,4
+>>> td.detect(QPoint(4,5))
+PyQt5.QtCore.QPoint(6, 5)
+
+The axis is still horizontal, limits are still 4,6, and direction is to the left.
+>>> td.dumpState()
+lower 4 upper 6
+('extreme PyQt5.QtCore.QPoint(4, 5) isGrowingLower', 'True')
+
+Point off axis IS a turn.
+>>> result = td.detect(QPoint(0,0))
+>>> print result
+PyQt5.QtCore.QPoint()
+
+
+Widespread jitter
+=================
+
+This behaviour should probably be changed.
+If we fall behind, then points are widely spaced and widely spaced reversals are not detected.
+
+Point a great distance horizontally from previous point is NOT a turn,
+but establishes horizontal orientation but not a direction.
+>>> result = td.detect(QPoint(0,10))
+>>> print result
+None
+
+>>> td.dumpState()
+lower 0 upper 10
+('extreme PyQt5.QtCore.QPoint(0, 10) isGrowingLower', 'None')
+
+Point reversed from previous point is NOT a reversal.
+>>> result = td.detect(QPoint(0,5))
+>>> print result
+None
+
+>>> td.dumpState()
+lower 0 upper 10
+('extreme PyQt5.QtCore.QPoint(0, 10) isGrowingLower', 'None')
+
+

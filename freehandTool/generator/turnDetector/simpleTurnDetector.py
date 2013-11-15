@@ -7,6 +7,7 @@ import logging
 
 from turnDetector import TurnDetector
 from ..utils.axis import Axis
+from ..utils.orthogonal import areOrthogonal
 
 logger = logging.getLogger(__name__)  # module level logger
 logger.setLevel(level=logging.DEBUG)
@@ -48,7 +49,7 @@ class SimpleTurnDetector(TurnDetector):
     '''
     Return newPosition if not on horiz or vert axis with referencePosition, else return None. 
     '''
-    if not self.axis.isAnySameAxis(newPosition, referencePosition):
+    if not areOrthogonal(newPosition, referencePosition):
       logger.debug("Turn %s", str(newPosition))
       return newPosition
     else:
