@@ -76,7 +76,7 @@ class LineGeneratorMixin(object):
     # Effectively, eliminate generation lag by generating a LinePathElement.
     forcedLine = self._forceLineFromPath(turnHistory.start, turnHistory.end, newTurn, self.constraints)
     self.curveGenerator.send((forcedLine, True))
-    print("Forced line")
+    ##print("Forced line")
     ## For debug: self.labelLine("F" + str(positionElapsedTime), newTurn)
     turnHistory.roll()
     
