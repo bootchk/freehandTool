@@ -39,6 +39,10 @@ class History():
   def collapse(self, newState):
     '''
     Both start and end the same new state.
+    
+    Same as:
+      updateEnd(newState)
+      roll()
     '''
     self.start = self.end = newState
     

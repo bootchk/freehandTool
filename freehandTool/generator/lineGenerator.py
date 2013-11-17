@@ -24,14 +24,14 @@ class LineGeneratorMixin(object):
     Generates PathLines (vectors on integer plane (grid)), not necessarily axial, roughly speaking: diagonals.
     
     Note structure of this filter differs from others:
-    - uses three turns (input objects): start, previous, and current.
-    - on startup, previousTurn and startTurn are same
-    - rolls forward previousTurn every iter, instead of on send().
+    - uses three turns (input objects): history.start, history.end, and current.
+    - on startup, history.isCollapsed()
+    - updates history.end every iter, instead of on send().
     '''
     turnHistory = History(initialPosition)
     self.constraints = Constraints()
-  
     # directions = Directions()
+    
     #turnClock = QTime.currentTime()  # note restart returns elapsed
     #turnClock.restart()
     try:
@@ -39,27 +39,29 @@ class LineGeneratorMixin(object):
         newTurn, isForced = (yield)  # 2nd entry point of this coroutine
         #turnElapsedTime = turnClock.restart()
         #logger.debug("Turn elapsed %d", turnElapsedTime)
-        #line = self.smallestLineFromPath(previousTurn, turn) # TEST 
+        #line = self.smallestLineFromPath(turnHistory.end, newTurn) # TEST 
         
         ##if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
         if isForced:
           self._sendForcedLine(newTurn, turnHistory)
           # assert turnHistory was updated by _sendForcedLine()
         else:
-          line = self._lineFromPath(turnHistory.start, turnHistory.end, newTurn, self.constraints) # ,directions)
+          line = self._lineFromPath(turnHistory, newTurn, self.constraints) # ,directions)
           if line is not None:  # if newTurn not satisfied by vector
             self.curveGenerator.send((line, False))
             # self.labelLine(str(positionElapsedTime), newTurn)
             turnHistory.roll()
-        
-          # else current path (all turns) still satisfied by a PathLine: wait
-          turnHistory.updateEnd(newTurn)
+            turnHistory.updateEnd(newTurn)
+            # sent a pathLine to oldHistory.end, new turnHistory is (oldHistory.end, newTurn)
+          else: # current path (all turns) still satisfied by a PathLine.
+            # Don't send any lines, but discard intermediate turns
+            turnHistory.updateEnd(newTurn)
+            # new turnHistory is (oldHistory.start, newTurn)
           
           '''
-          If sent a pathLine to oldHistory.end, new turnHistory is (oldHistory.end, newTurn)
-          Else new turnHistory is (oldHistory.start, newTurn) i.e. discarded intermediate Turns.
+          Cannot assert not turnHistory.isCollapsed():
+          Diagonal jitter may send consecutive turns ending where we started (without violating constraints.)
           '''
-          assert not turnHistory.isCollapsed()
         
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
@@ -74,11 +76,11 @@ class LineGeneratorMixin(object):
 
     # User paused, send a forced PathLine which subsequently makes cusp-like graphic
     # Effectively, eliminate generation lag by generating a LinePathElement.
-    forcedLine = self._forceLineFromPath(turnHistory.start, turnHistory.end, newTurn, self.constraints)
+    forcedLine = self._forcedLineFromPath(turnHistory, newTurn, self.constraints)
+    # _forcedLineFromPath revised turnHistory
     self.curveGenerator.send((forcedLine, True))
     ##print("Forced line")
     ## For debug: self.labelLine("F" + str(positionElapsedTime), newTurn)
-    turnHistory.roll()
     
   
   def flushLineGenerator(self, turnHistory):
@@ -102,7 +104,7 @@ class LineGeneratorMixin(object):
     return PathLine(turn1, turn2)
   
   
-  def _lineFromPath(self, startTurn, previousTurn, currentTurn, constraints, directions=None):
+  def _lineFromPath(self, history, currentTurn, constraints, directions=None):
     '''
     Fit a vector to an integer path.
     If no one vector fits path (a pivot): return vector and start new vector.
@@ -141,13 +143,11 @@ class LineGeneratorMixin(object):
     else:
     '''
     # Vector from startTurn, via many turns, to currentTurn
-    vectorViaAllTurns = currentTurn - startTurn
+    vectorViaAllTurns = currentTurn - history.start
       
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
       logger.debug("Line for constraint violation") # , constraints, "vector", vectorViaAllTurns
-      result = self._interpolateConstraintViolating(startTurn=startTurn,
-         lastSatisfyingTurn=previousTurn,
-         firstNonsatisfingTurn=currentTurn)
+      result = self._interpolateConstraintViolating(history, firstNonsatisfingTurn=currentTurn)
       # reset
       constraints.__init__()
       # directions.reset()
@@ -157,25 +157,43 @@ class LineGeneratorMixin(object):
     return result
     
     
-  def _forceLineFromPath(self, startTurn, previousTurn, currentTurn, constraints, directions=None):
+  def _forcedLineFromPath(self, history, currentTurn, constraints, directions=None):
     ''' 
-    Force a PathLine to currentTurn, regardless of constraints. 
-    Note this is a PathLine, not a LinePathElement.
+    PathLine that forces to currentTurn, regardless of constraints. 
+    Note returns a PathLine, not a LinePathElement.
     '''
     constraints.__init__()
     
-    if startTurn == currentTurn:
-      ''' A reversal. A line from start to current would be Null. '''
-      logger.debug("Reversal")
-      assert previousTurn != startTurn
-      result = PathLine(startTurn, previousTurn)
-    else:
-      result = PathLine(startTurn, currentTurn)
-    logger.debug( "Force PathLine %s %s", str(startTurn), str(currentTurn))
+    if history.start == currentTurn:
+      '''
+      A reversal in the turns.
+      A line from start to current isNull.
+      We must send some line (to flush/force CurveGenerator).
+      One alternative is to send a NullPathLine (but that loses the move to history.end, which hopefully is just jitter.)
+      Another alternative  is to send two lines (with the second being forcing.)
+      Note that this does not catch all reversals in turns: history.end might not be the extreme turn.
+      '''
+      logger.debug("Reversal in turns")
+      """
+      assert not history.isCollapsed(), 'No consecutive forces'
+      result = PathLine(history.start, history.end)
+      logger.debug( "Force PathLine %s %s", str(history.start), str(history.end))
+      history.roll()
+      """
+      result = PathLine.nullPathLine(currentTurn)
+      history.collapse(currentTurn)
+    else: # Current turn is different from history.start
+      # Better to send two lines??
+      result = PathLine(history.start, currentTurn)
+      logger.debug( "Force PathLine %s %s", str(history.start), str(currentTurn))
+      history.collapse(currentTurn)
+    # Forcing makes history collapsed on the currentTurn.
+    assert history.isCollapsed()
+    assert history.end == currentTurn
     return result
     
     
-  def _interpolateConstraintViolating(self, startTurn, lastSatisfyingTurn, firstNonsatisfingTurn):
+  def _interpolateConstraintViolating(self, history, firstNonsatisfingTurn):
     '''
     Interpolate precise violating pixel position
     Return a PathLine.
@@ -183,6 +201,7 @@ class LineGeneratorMixin(object):
     This version simply returns PathLine to lastSatisfyingTurn (a null interpolation.)
     potrace does more, a non-null interpolation.
     '''
-    return PathLine(startTurn, lastSatisfyingTurn)
+    # history.end is the last satisfying turn
+    return PathLine(history.start, history.end)
   
   

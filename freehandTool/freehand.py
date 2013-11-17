@@ -386,7 +386,13 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   
 
   def pointerMoveEvent(self, pointerEvent):
-    ''' Client feeds pointerMoveEvent into a pipe. '''
+    ''' 
+    Client feeds pointerMoveEvent into a pipe. 
+    
+    !!! We don't assume that the same position will not be fed consecutively,
+    or that consecutive positions are contiguous in any sense.
+    The external system (OS and framework) might get busy and/or confused.
+    '''
     if self.isGenerating():
       try:
         position = pointerEvent.viewPos
@@ -463,8 +469,11 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     Timeout after last pointerMoveEvent. 
     
     Resend the same position we last sent.
-    It is only resend once (since timer is not restarted until pointerMoveEvent)
-    but another pointerMoveEvent may also be (and send) the same position.
+    
+    It is USUALLY only resent once (since timer is not restarted until pointerMoveEvent)
+    but a subsequent pointerMoveEvent may also be (and send) the same position,
+    and it too could timeout.
+    But we don't prevent forcing the same position more than once consecutively.
     '''
     #print("Timeout")
     # Resend lastSentPosition, forced (flush)

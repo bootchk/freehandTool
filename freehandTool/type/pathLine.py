@@ -20,7 +20,12 @@ class PathLine(QLine):
   def nullPathLine(self, point):
     ''' 
     Zero length PathLine at a point.
-    Initial send to CurveGenerator.
+    
+    Sent to CurveGenerator in these cases:
+    - initial send
+    - forced (flushing) send
+    - final (flushing) send
+    
     '''
     assert isinstance(point, PointerPoint), str(point)
     return PathLine(point, point)
