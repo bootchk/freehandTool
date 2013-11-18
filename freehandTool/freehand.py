@@ -302,11 +302,12 @@ from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
 
 
-# uncomment/comment this to enable/disable logging across all loggers in the app.
-# separate loggers have their own level.
-# This should be uncommented for a shipping app
-##import logging
-##logging.disable(logging.WARNING)
+# uncomment/comment this to disable/enable logging across all loggers in the app.
+# Disabling eliminates most overhead of the calls to loggers.
+# Separate loggers have their own level.
+# This should be uncommented for a production (shipping) app
+import logging
+logging.disable(logging.WARNING)
 
 '''
 Generators are mixin behavior.
@@ -342,16 +343,17 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     # See below: _initFilterPipe creates self.turnGenerator, etc.
     self._resetState()
     self.createTimer()
+    self.path = None  # Do not reset, i.e. keep this reference to old path, for testing
     
     
   def _resetState(self):
-    # Tool operates on these, but they are None until setSegmentString
-    self.pathHeadGhost = None
-    self.path = None
+
+    self.pathHeadGhost = None # None until setSegmentString
     
-    # Other state
-    self._isGenerating = False
+    # API state
+    self._wasSetSegment = False
     self._wasPointerPress = False
+    self._wasPointerMove = False
     
     '''
     Cache last point generated.  CurveGenerator uses this.  In frame (CS) of CurveGenerator
@@ -368,6 +370,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     Tool starts writing into segmentString after pointerPressEvent().
     '''
     self.path = segmentString
+    self._wasSetSegment = True
     self.pathHeadGhost = pathHeadGhost
     self.pathHeadGhost.showAt(scenePosition)
 
@@ -417,8 +420,9 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self.setGenerating(True)
     try:
       position = pointerEvent.viewPos
-      self.restartTimer(position)
       self.turnGenerator.send((position, False))  # Feed pipe, not forced
+      self.restartTimer(position)
+      assert self.timer.isActive()
     except StopIteration:
       '''
       While user is moving pointer with pointer button down, we don't expect pipe to stop.
@@ -441,7 +445,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   def pointerPressEvent(self, pointerEvent):
     ''' Client call to start freehand drawing. '''
     assert not self._wasPointerPress, 'Consecutive pointerPressEvent'
-    assert self.path is not None, 'No prior call to setSegmentString.'
+    assert self._wasSetSegment, 'No prior call to setSegmentString.'
     self._initFilterPipe(pointerEvent.viewPos)
     self._wasPointerPress = True
     # Do not start timer until pointerMoveEvent
@@ -466,11 +470,11 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   
   def isGenerating(self):
     ''' Is pointer button down and at least one pointerEvent received. '''
-    return self._isGenerating
+    return self._wasPointerMove
   
   def setGenerating(self, truth):
     ''' Set flag indicating closed generators, not accepting pointerEvents. '''
-    self._isGenerating = truth
+    self._wasPointerMove = truth
   
   
   '''

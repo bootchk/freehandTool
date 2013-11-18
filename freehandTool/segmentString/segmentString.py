@@ -69,7 +69,7 @@ from .cuspness import Cuspness
 For testing, inherit mixin AlternateColorPaintingQGPI, that paints alternate segments different colors.
 Then you can distinguish segments, and see when the head collapses due to pauses and flushes.
 '''
-## For testing use: 
+## For testing (so you can visually distinguish segments) use: 
 ##from alternatePaintingQGPI import AlternateColorPaintingQGPI
 ##class SegmentString(AlternateColorPaintingQGPI, QGraphicsPathItem):
 

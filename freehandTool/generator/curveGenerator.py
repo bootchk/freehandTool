@@ -37,6 +37,9 @@ class CurveGeneratorMixin(object):
     On startup, previous PathLine is nullLine (!!! not None), but this still works.
     
     More generally known as "curve fitting."
+    
+    !!! InitialLine is NullPathLine and might receive a NullPathLine as part of flushing.
+    Don't assume any yielded line is not null, i.e. a very short line, from a point to the same point.
     '''
     assert initialLine.isNullPathLine()
     history = History(initialLine)
@@ -46,28 +49,41 @@ class CurveGeneratorMixin(object):
         newPathLine, isLineForced = (yield)
         assert isinstance(newPathLine, PathLine), "input is a PathLine"
         if isLineForced:
-          ''' User's pointer speed indicates wants a cusp-like fit, regardless of angle between PathLines.'''
-          segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(history.end, newPathLine)
+          ''' 
+          Forced line from: 1) User pointer pause or 2) closing generators. 
+          Make cusp-like fit, regardless of angle between PathLines.
+          newPathLine is not necessarily NullPathLine.
           '''
-          !!! next element from midpoint of nullLine
-          at end point of path, but as a PointerPoint
-          not as pathEndPoint, which is a FreehandPoint
-          '''
-          # Make history show null pathLine created here, not yielded
-          history.updateEnd(PathLine.nullPathLine(PointerPoint(newPathLine.p2()))) # pathEndPoint) 
-          
-          self.path.appendSegments(segments, segmentCuspness=cuspness)
+          if history.end.isNullPathLine():
+            '''
+            Either never generated any segments, or already flushed by a prior user pointer pause.
+            '''
+            if newPathLine.isNullPathLine():
+              logger.debug("Already flushed, or empty")
+              ''' !!! This is not a return which is StopIteration: it might be a pause, followed by close. '''
+              pass
+            else:
+              segments, pathEndPoint, cuspness = self.segmentsFromLineEndToEnd(history.end, newPathLine)
+              history.updateEnd(PathLine.nullPathLine(PointerPoint(newPathLine.p2())))
+              self._putSegments(segments, pathEndPoint, cuspness)
+          else:
+            segments, pathEndPoint, cuspness = self.segmentsFromLineMidToEnd(history.end, newPathLine)
+            '''
+            !!! next element from midpoint of nullLine
+            at end point of path, but as a PointerPoint
+            not as pathEndPoint, which is a FreehandPoint
+            '''
+            # Make history show null pathLine created here, not yielded
+            history.updateEnd(PathLine.nullPathLine(PointerPoint(newPathLine.p2()))) # pathEndPoint) 
+            
+            self._putSegments(segments, pathEndPoint, cuspness)
         else:
           ''' Fit to path, possibly a cusp. '''
           segments, pathEndPoint, cuspness = self.segmentsFromLineMidToMid(history.end, newPathLine)  
           # segments = nullcurveFromLines(history.end, newPathLine) # TEST
           history.updateEnd(newPathLine)
           # don't roll up the following stmt and stmt above, we want distinct traceback on errors
-          self.path.appendSegments(segments, segmentCuspness=cuspness)
-        
-        self.lastEndPointGenerated = pathEndPoint # !!! global cache
-        
-        self.pathHeadGhost.updateStart(pathEndPoint)
+          self._putSegments(segments, pathEndPoint, cuspness)
        
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
@@ -102,6 +118,16 @@ class CurveGeneratorMixin(object):
     pass
 
 
+  def _putSegments(self, segments, pathEndPoint, cuspness):
+    '''
+    Append segments and other updating.
+    This is equivalent to 'send' of other generators.
+    '''
+    self.path.appendSegments(segments, segmentCuspness=cuspness)
+    self.lastEndPointGenerated = pathEndPoint # !!! global cache
+    self.pathHeadGhost.updateStart(pathEndPoint)
+    
+  
   def segmentsFromLineMidToMid(self, line1, line2):
     '''
     Return a sequence of segments that fit midpoints of two lines. Also return new path end point.
@@ -165,6 +191,23 @@ class CurveGeneratorMixin(object):
     return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
 
 
+  def segmentsFromLineEndToEnd(self, line1, line2):
+    ''' 
+    Single segment from end of line1 to end of line2 
+    
+    This is called for example:
+    - when the previous line ended in a cusp,
+    i.e. we already generated segments to the end of previous line.
+    - when only line is generated (pointerdown, move straight, pointer up)
+    when line1 is the initial line (a null line.)
+    
+    '''
+    startPoint = FreehandPoint(self.mapFromDeviceToScene(line1.p2()))
+    endPoint = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))
+    segment = LineSegment(startPoint, endPoint)
+    # end of line2 is a cusp
+    result = [segment, ], endPoint, [True, ]
+    return result
 
   '''
   Auxiliary functions for segmentsFromLineMidToMid() etc
@@ -178,7 +221,7 @@ class CurveGeneratorMixin(object):
     Note we already generated segment to first midpoint,
     and will subsequently generate segment from second midpoint.
     '''
-    logger.debug("cusp <<<")
+    logger.debug("cusp")
     try:
       # !!! Here is where we use cache
       firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)

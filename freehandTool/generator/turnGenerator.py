@@ -52,8 +52,6 @@ class TurnGeneratorMixin(object):
         newPosition, isForced = (yield) # 2nd entry point of this coroutine
         # !!! not assert newPosition is different from any prior position, including initialPosition
         
-        ## positionElapsedTime = positionClock.restart()
-        
         if isForced:
           # Flush
           self.lineGenerator.send((newPosition, True))

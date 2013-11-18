@@ -71,7 +71,16 @@ class LineGeneratorMixin(object):
     except GeneratorExit:
       self.flushLineGenerator(turnHistory)  # self is FreehandTool having three generators with distinctly named flush methods
       
-      
+  
+  
+  """
+  In this design, we only send one forcing line, to flush.
+  It may be a null line.
+  
+  In an alternative design, we might send two lines, one normal and the other forcing but a null line.
+  The alternative design might be simpler for CurveGenerator, but more complex here?
+  """
+  
   def _flushUpToNewTurn(self, newTurn, turnHistory):
     '''
     Flush self from history up to newTurn.
@@ -79,6 +88,7 @@ class LineGeneratorMixin(object):
     User paused, send a forced PathLine which subsequently makes cusp-like graphic
     Effectively, eliminate pipeline lag by generating a LinePathElement.
     '''
+    logger.debug("_flushUpToNewTurn %s", str(newTurn))
     forcedLine = self._forcedLineFromPath(turnHistory, newTurn, self.constraints)
     # _forcedLineFromPath revised turnHistory
     self._sendForcedLine(forcedLine)
@@ -87,20 +97,30 @@ class LineGeneratorMixin(object):
     
   
   def flushLineGenerator(self, turnHistory):
-    ''' 
-    The only case where turnHistory isCollapsed()==True is the case where we never generated any PathLines. 
-    IOW, the 'if branch' below is taken for all but that rare case.
+    '''
+    Generator is closing.
+    Send a forced line to cause CurveGenerator to generate a segment to turnHistory.end Turn, which is the end of the PointerTrack.
+    Note history is abandoned (not updated.)
     '''
     logger.debug("flush")
     if not turnHistory.isCollapsed():
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
+      logger.debug("_sendForceLine non-null line from history")
       self._sendForcedLine(PathLine(turnHistory.start, turnHistory.end))
     else:
-      ''' Cause CurveGenerator to generate a segmment to turnHistory.end Turn, which is the end of the PointerTrack.'''
+      '''
+      Cases where turnHistory isCollapsed()==True:
+        1) we never generated any PathLines.
+        2) we just flushed e.g. when user paused (causing a flush), then pointer up (causing another flush).
+        3) we just sent a line (in which case curveGenerator still needs to be flushed.)
+      We must send a line to force the curveGenerator, but it is null.
+      '''
+      logger.debug("_sendForceLine nullPathLine")
       self._sendForcedLine(PathLine.nullPathLine(turnHistory.end))
     # Assert sent exactly one forcing line.
-      
-      
+  
+  
+  
   def _sendForcedLine(self, line):
     '''
     Encapsulates how to send a forced line:
