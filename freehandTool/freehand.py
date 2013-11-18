@@ -290,7 +290,7 @@ Segments are converted to Local CS (float) of SegmentString when appended.
 
 import sys
 
-# !!! QTime for timing of cusps
+# !!! QTime for timing of paused forcing
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
 from PyQt5.QtCore import QObject, QTimer
 
@@ -298,7 +298,6 @@ from PyQt5.QtCore import QObject, QTimer
 from .generator.turnGenerator import TurnGeneratorMixin
 from .generator.lineGenerator import LineGeneratorMixin
 from .generator.curveGenerator import CurveGeneratorMixin
-#from .segmentString.segment import LineSegment
 from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
 
@@ -315,22 +314,44 @@ Generators are mixin behavior.
 A generator filter is a mixin'ed method of FreeHand class.
 A generator method name is capitalized because method *appears* to be a class.
 '''
+
 # Need QObject for QTime
-
 class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, QObject):
-
+  '''
+  Algebra of the API:
+  tool := create use*    # A tool can be reused, zero or more times.
+  use := setSegmentString  pointerPressEvent pointerMoveEvent* pointerReleaseEvent
+  
+  pointerMoveEvent can be called zero or more times.
+  If called zero times, the segment string will be empty.
+  If called only one time, at the same position as pointerPressEvent ???
+  If called only two times, the second time at the same position as pointerPressEvent (jitter.) ???
+  
+  The API algebra is enforced.
+  Cases:
+  Fail to call setSegmentString: assertion exception.
+  Call pointerMoveEvent without proper prefix: quietly ignored.
+  Call pointerPressEvent more than once: assertion exception.
+  Call pointerReleaseEvent more than once ???
+  Call pointerReleaseEvent without a prior pointerPressEvent: assertion exception.
+  TODO write doctests for these
+  '''
 
   def __init__(self):
-    self.turnGenerator = None # Flag, indicates pipe is generating
-    # Also attributes: lineGenerator and curveGenerator
+    super(FreehandTool, self).__init__()
+    # See below: _initFilterPipe creates self.turnGenerator, etc.
+    self._resetState()
+    self.createTimer()
     
+    
+  def _resetState(self):
     # Tool operates on these, but they are None until setSegmentString
     self.pathHeadGhost = None
     self.path = None
     
+    # Other state
     self._isGenerating = False
-    
-    self.createTimer()
+    self._wasPointerPress = False
     
     '''
     Cache last point generated.  CurveGenerator uses this.  In frame (CS) of CurveGenerator
@@ -376,12 +397,9 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     Closing a generator may cause it to yield, and thus invoke downstream generators in the pipeline.
     Close generators in their order in the pipeline.
     '''
-    if self.isGenerating():  
-      self.turnGenerator.close()
-      self.lineGenerator.close()
-      self.curveGenerator.close()
-      self.setGenerating(False)
-    # else ignore pointerRelease without prior pointerPress, race?
+    self.turnGenerator.close()
+    self.lineGenerator.close()
+    self.curveGenerator.close()
     
   
 
@@ -393,22 +411,25 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     or that consecutive positions are contiguous in any sense.
     The external system (OS and framework) might get busy and/or confused.
     '''
-    if self.isGenerating():
-      try:
-        position = pointerEvent.viewPos
-        self.restartTimer(position)
-        self.turnGenerator.send((position, False))  # Feed pipe, not forced
-      except StopIteration:
-        '''
-        While user is moving pointer with pointer button down, we don't expect pipe to stop.
-        For debugging, call exitAbnormally().
-        If a component of large app, raise.
-        A caller might catch it and rescue by ending and restarting the tool?
-        '''
-        raise
-      else: # else no exception
-        self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
-    # else ignore pointerEvent when not isGenerating
+    if not self._wasPointerPress:
+      return   # Quietly ignore this API error
+    
+    self.setGenerating(True)
+    try:
+      position = pointerEvent.viewPos
+      self.restartTimer(position)
+      self.turnGenerator.send((position, False))  # Feed pipe, not forced
+    except StopIteration:
+      '''
+      While user is moving pointer with pointer button down, we don't expect pipe to stop.
+      For debugging, call exitAbnormally().
+      If a component of large app, raise.
+      A caller might catch it and rescue by ending and restarting the tool?
+      '''
+      raise
+    else: # else no exception
+      self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
+  
   
   
   def exitAbnormally(self):
@@ -419,21 +440,32 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     
   def pointerPressEvent(self, pointerEvent):
     ''' Client call to start freehand drawing. '''
+    assert not self._wasPointerPress, 'Consecutive pointerPressEvent'
+    assert self.path is not None, 'No prior call to setSegmentString.'
     self._initFilterPipe(pointerEvent.viewPos)
-    # Do not start timer until pointerMoveEvents
+    self._wasPointerPress = True
+    # Do not start timer until pointerMoveEvent
+    # Do not setGenerating(True) until pointerMoveEvents
 
   
   def pointerReleaseEvent(self, pointerEvent):
     ''' Client call to end freehand drawing. '''
-    self.stopTimer()
-    self._closeFilterPipe()
-    self.pathHeadGhost.hide()
-    #OLD self._createFinalSegment(pointerEvent)
+    assert self._wasPointerPress
+    self.stopTimer()  # Can stop even if not started.
+    if self.isGenerating():
+      # Don't close unless generating, since it flushes and creates at least one segment
+      self._closeFilterPipe()
+    else:
+      # leave pipe in initial state
+      assert self.path.countSegments == 0
+      pass
+    
     #print "Final segment count", self.path.countSegments()
-  
+    self._resetState()
+    
   
   def isGenerating(self):
-    ''' Is pointer button down and accepting pointerEvents. '''
+    ''' Is pointer button down and at least one pointerEvent received. '''
     return self._isGenerating
   
   def setGenerating(self, truth):
@@ -464,11 +496,12 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   def stopTimer(self):
     self.timer.stop()
   
+  
   def handleTimeout(self):
     ''' 
-    Timeout after last pointerMoveEvent. 
+    Timeout after previous pointerMoveEvent. 
     
-    Resend the same position we last sent.
+    Resend the same position we previously sent.
     
     It is USUALLY only resent once (since timer is not restarted until pointerMoveEvent)
     but a subsequent pointerMoveEvent may also be (and send) the same position,

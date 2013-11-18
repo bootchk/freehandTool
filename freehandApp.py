@@ -41,9 +41,9 @@ class GraphicsView(QGraphicsView):
       assert self.dragMode() == QGraphicsView.NoDrag
       self.setRenderHint(QPainter.Antialiasing)
       self.setRenderHint(QPainter.TextAntialiasing)
+      self.freehandTool = FreehandTool()
       self.setMouseTracking(True);  # Enable mouseMoveEvent
       
-      self.freehandTool = FreehandTool()
 
 
 

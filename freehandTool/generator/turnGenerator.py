@@ -74,5 +74,5 @@ class TurnGeneratorMixin(object):
     logger.debug("Flush")  
     if not history.isCollapsed():
       ''' Have position not sent. Send a turn at last known position. '''
-      self.lineGenerator.send((history.end, 0)) # force a Turn 
+      self.lineGenerator.send((history.end, True)) # force a Turn 
 
