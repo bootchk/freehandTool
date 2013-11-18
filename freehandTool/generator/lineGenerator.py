@@ -43,8 +43,8 @@ class LineGeneratorMixin(object):
         
         ##if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
         if isForced:
-          self._sendForcedLine(newTurn, turnHistory)
-          # assert turnHistory was updated by _sendForcedLine()
+          self._flushUpToNewTurn(newTurn, turnHistory)
+          # assert turnHistory was updated by _flushUpToNewTurn()
         else:
           line = self._lineFromPath(turnHistory, newTurn, self.constraints) # ,directions)
           if line is not None:  # if newTurn not satisfied by vector
@@ -72,13 +72,16 @@ class LineGeneratorMixin(object):
       self.flushLineGenerator(turnHistory)  # self is FreehandTool having three generators with distinctly named flush methods
       
       
-  def _sendForcedLine(self, newTurn, turnHistory):
-
-    # User paused, send a forced PathLine which subsequently makes cusp-like graphic
-    # Effectively, eliminate generation lag by generating a LinePathElement.
+  def _flushUpToNewTurn(self, newTurn, turnHistory):
+    '''
+    Flush self from history up to newTurn.
+    
+    User paused, send a forced PathLine which subsequently makes cusp-like graphic
+    Effectively, eliminate pipeline lag by generating a LinePathElement.
+    '''
     forcedLine = self._forcedLineFromPath(turnHistory, newTurn, self.constraints)
     # _forcedLineFromPath revised turnHistory
-    self.curveGenerator.send((forcedLine, True))
+    self._sendForcedLine(forcedLine)
     ##print("Forced line")
     ## For debug: self.labelLine("F" + str(positionElapsedTime), newTurn)
     
@@ -91,13 +94,21 @@ class LineGeneratorMixin(object):
     logger.debug("flush")
     if not turnHistory.isCollapsed():
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
-      self.curveGenerator.send((PathLine(turnHistory.start, turnHistory.end), False))
+      self._sendForcedLine(PathLine(turnHistory.start, turnHistory.end))
+    else:
+      ''' Cause CurveGenerator to generate a segmment to turnHistory.end Turn, which is the end of the PointerTrack.'''
+      self._sendForcedLine(PathLine.nullPathLine(turnHistory.end))
+    # Assert sent exactly one forcing line.
       
-    ''' Cause CurveGenerator to generate a segmment to turnHistory.end Turn, which is the end of the PointerTrack.'''
-    self.curveGenerator.send((PathLine.nullPathLine(turnHistory.end), False))
       
+  def _sendForcedLine(self, line):
+    '''
+    Encapsulates how to send a forced line:
+    - send a tuple where 2nd element is True.
+    '''
+    logger.debug("sendForcedLine")
+    self.curveGenerator.send((line, True))
     
-  
   
   def _smallestLineFromPath(self, turn1, turn2):
     ''' For TESTING: just emit a vector regardless of fit. '''

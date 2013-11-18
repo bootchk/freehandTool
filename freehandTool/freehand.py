@@ -306,8 +306,8 @@ from .type.freehandPoint import FreehandPoint
 # uncomment/comment this to enable/disable logging across all loggers in the app.
 # separate loggers have their own level.
 # This should be uncommented for a shipping app
-import logging
-logging.disable(logging.WARNING)
+##import logging
+##logging.disable(logging.WARNING)
 
 '''
 Generators are mixin behavior.
