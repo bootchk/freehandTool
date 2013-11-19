@@ -464,8 +464,10 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
       assert self.path.countSegments == 0
       pass
     
+    self.pathHeadGhost.hide() # Hide.  Client knows about it but shouldn't be concerned with hiding, and may be reusing it.
     #print "Final segment count", self.path.countSegments()
     self._resetState()
+    
     
   
   def isGenerating(self):
