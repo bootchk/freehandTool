@@ -1,4 +1,3 @@
-from __future__ import print_function # Python3 compatible
 
 '''
 Copyright 2012 Lloyd Konneker
@@ -287,9 +286,6 @@ Segments are converted to Local CS (float) of SegmentString when appended.
 (An early design converted back and forth to Device CS, with loss of precision due to a call to round().)
 '''
 
-
-import sys
-
 # !!! QTime for timing of paused forcing
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
 from PyQt5.QtCore import QObject, QTimer
@@ -300,20 +296,18 @@ from .generator.lineGenerator import LineGeneratorMixin
 from .generator.curveGenerator import CurveGeneratorMixin
 from .type.pathLine import PathLine
 from .type.freehandPoint import FreehandPoint
+from .logger import logger
 
 
-# uncomment/comment this to disable/enable logging across all loggers in the app.
-# Disabling eliminates most overhead of the calls to loggers.
-# Separate loggers have their own level.
-# This should be uncommented for a production (shipping) app
-import logging
-logging.disable(logging.WARNING)
+
 
 '''
 Generators are mixin behavior.
   
 A generator filter is a mixin'ed method of FreeHand class.
 A generator method name is capitalized because method *appears* to be a class.
+
+!!! Note generator mixins call logger.debug() and so forth, so that must be defined in this class.
 '''
 
 # Need QObject for QTime
@@ -344,6 +338,9 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     self._resetState()
     self.createTimer()
     self.path = None  # Do not reset, i.e. keep this reference to old path, for testing
+    
+    self.logger = logger
+    self.logger.debug("Init FreehandTool")
     
     
   def _resetState(self):
@@ -426,7 +423,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     except StopIteration:
       '''
       While user is moving pointer with pointer button down, we don't expect pipe to stop.
-      For debugging, call exitAbnormally().
+      For debugging, call _exitAbnormally(), below.
       If a component of large app, raise.
       A caller might catch it and rescue by ending and restarting the tool?
       '''
@@ -435,12 +432,15 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
       self.pathHeadGhost.updateEnd(FreehandPoint(pointerEvent.scenePos))
   
   
+  """
+  Optional code useful for debugging.
+  import sys
   
-  def exitAbnormally(self):
+  def _exitAbnormally(self):
     " For debugging: quit app so we can see error trace. "
     print("Abnormal pointerMoveEvent, exiting")
     sys.exit()
-    
+  """
     
   def pointerPressEvent(self, pointerEvent):
     ''' Client call to start freehand drawing. '''

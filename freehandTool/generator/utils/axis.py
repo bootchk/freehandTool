@@ -3,13 +3,10 @@ Copyright 2013 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import logging
 from copy import copy
 
 from .orthogonal import areOrthogonal, areVerticallyAligned, areHorizontallyAligned
-
-logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.DEBUG)
+from ...logger import logger
 
 
 class Axis():

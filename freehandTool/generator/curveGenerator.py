@@ -3,8 +3,8 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import traceback
-import logging
+##For debugging
+##import traceback
 
 from ..segmentString.segment import LineSegment, CurveSegment
 from ..type.pathLine import PathLine
@@ -14,8 +14,6 @@ from ..exception import FreehandNullSegmentError
 
 from .utils.history import History
 
-logger = logging.getLogger(__name__)  # module level logger
-logging.basicConfig(level=logging.DEBUG)
 
 
 class CurveGeneratorMixin(object):
@@ -59,7 +57,7 @@ class CurveGeneratorMixin(object):
             Either never generated any segments, or already flushed by a prior user pointer pause.
             '''
             if newPathLine.isNullPathLine():
-              logger.debug("Already flushed, or empty")
+              self.logger.debug("Already flushed, or empty")
               ''' !!! This is not a return which is StopIteration: it might be a pause, followed by close. '''
               pass
             else:
@@ -87,8 +85,8 @@ class CurveGeneratorMixin(object):
        
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
-      logger.critical("Unexpected exception in CurveGenerator")  # program error
-      traceback.print_exc()
+      self.logger.critical("Unexpected exception in CurveGenerator")  # program error
+      ##traceback.print_exc()
       raise
     except GeneratorExit:
       self.flushCurveGenerator(history)
@@ -109,7 +107,7 @@ class CurveGeneratorMixin(object):
       GeneratorExit exception is still in effect after finally, but caller does not see it,
       and Python does NOT allow it to return a value.
     '''
-    logger.debug("flush")
+    self.logger.debug("flush")
     '''
     Assert LineGenerator sent a NullPathLine that caused self to generate a segment to it's midpoint.
     So already generated segments accurately reach end of the PointerTrack.
@@ -165,7 +163,7 @@ class CurveGeneratorMixin(object):
       as second control point for previous spline,
       said control points are colinear and joint between consecutive splines is smooth.
       '''
-      logger.debug("mid to mid curve")
+      self.logger.debug("mid to mid curve")
       return ([CurveSegment(startPoint=midpoint1,
                             controlPoint1=point1.interval(point2, 0.5+0.5*alpha), 
                             controlPoint2=point3.interval(point2, 0.5+0.5*alpha), 
@@ -186,7 +184,7 @@ class CurveGeneratorMixin(object):
     '''
     midToMidsegments, endOfMidToMid, cuspness = self.segmentsFromLineMidToMid(line1, line2)
     finalEndPoint = FreehandPoint(self.mapFromDeviceToScene(line2.p2()))  # line2.p2()
-    logger.debug("Mid to end")
+    self.logger.debug("Mid to end")
     midToEnd = LineSegment(endOfMidToMid, finalEndPoint)
     return midToMidsegments + [midToEnd], finalEndPoint, cuspness + [True]
 
@@ -221,16 +219,16 @@ class CurveGeneratorMixin(object):
     Note we already generated segment to first midpoint,
     and will subsequently generate segment from second midpoint.
     '''
-    logger.debug("cusp")
+    self.logger.debug("cusp")
     try:
       # !!! Here is where we use cache
       firstSegment = LineSegment(self.lastEndPointGenerated, cuspPoint)
     except FreehandNullSegmentError:
-      logger.debug("??? First segment null in segmentsForCusp")
+      self.logger.debug("??? First segment null in segmentsForCusp")
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        logger.debug("??? Both segments null in segmentsForCusp")
+        self.logger.debug("??? Both segments null in segmentsForCusp")
         result = [], endPoint, []
       else:
         # Only secondSegment is not null
@@ -239,7 +237,7 @@ class CurveGeneratorMixin(object):
       try:
         secondSegment = LineSegment(cuspPoint, endPoint)
       except FreehandNullSegmentError:
-        logger.debug("??? Second segment null in segmentsForCusp")
+        self.logger.debug("??? Second segment null in segmentsForCusp")
         result = [firstSegment,], endPoint, [False,]
       else:
         # Normal case

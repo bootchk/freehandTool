@@ -3,14 +3,12 @@ Copyright 2013 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import logging
+
 
 from turnDetector import TurnDetector
 from ..utils.axis import Axis
 from ..utils.orthogonal import areOrthogonal
-
-logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.DEBUG)
+from ...logger import logger
 
 
 

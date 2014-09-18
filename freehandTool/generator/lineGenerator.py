@@ -3,15 +3,13 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import traceback
-import logging
+## For debugging
+##import traceback
 
 from ..type.pathLine import PathLine
 from .utils.constraints import Constraints
 from .utils.history import History
 
-logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.DEBUG)
 
 
 class LineGeneratorMixin(object):
@@ -38,7 +36,7 @@ class LineGeneratorMixin(object):
       while True:
         newTurn, isForced = (yield)  # 2nd entry point of this coroutine
         #turnElapsedTime = turnClock.restart()
-        #logger.debug("Turn elapsed %d", turnElapsedTime)
+        #self.logger.debug("Turn elapsed %d", turnElapsedTime)
         #line = self.smallestLineFromPath(turnHistory.end, newTurn) # TEST 
         
         ##if positionElapsedTime > LineGeneratorMixin.MAX_POINTER_ELAPSED_FOR_SMOOTH:
@@ -65,8 +63,8 @@ class LineGeneratorMixin(object):
         
     except Exception:
       # !!! GeneratorExit is a BaseException, not an Exception
-      logger.critical( "Unexpected exception")  # Program error
-      traceback.print_exc()
+      self.logger.critical( "Unexpected exception")  # Program error
+      ##traceback.print_exc()
       raise
     except GeneratorExit:
       self.flushLineGenerator(turnHistory)  # self is FreehandTool having three generators with distinctly named flush methods
@@ -88,7 +86,7 @@ class LineGeneratorMixin(object):
     User paused, send a forced PathLine which subsequently makes cusp-like graphic
     Effectively, eliminate pipeline lag by generating a LinePathElement.
     '''
-    logger.debug("_flushUpToNewTurn %s", str(newTurn))
+    self.logger.debug("_flushUpToNewTurn %s", str(newTurn))
     forcedLine = self._forcedLineFromPath(turnHistory, newTurn, self.constraints)
     # _forcedLineFromPath revised turnHistory
     self._sendForcedLine(forcedLine)
@@ -102,10 +100,10 @@ class LineGeneratorMixin(object):
     Send a forced line to cause CurveGenerator to generate a segment to turnHistory.end Turn, which is the end of the PointerTrack.
     Note history is abandoned (not updated.)
     '''
-    logger.debug("flush")
+    self.logger.debug("flush")
     if not turnHistory.isCollapsed():
       ''' Have turn not sent. Fabricate a PathLine and send() it now. '''
-      logger.debug("_sendForceLine non-null line from history")
+      self.logger.debug("_sendForceLine non-null line from history")
       self._sendForcedLine(PathLine(turnHistory.start, turnHistory.end))
     else:
       '''
@@ -115,7 +113,7 @@ class LineGeneratorMixin(object):
         3) we just sent a line (in which case curveGenerator still needs to be flushed.)
       We must send a line to force the curveGenerator, but it is null.
       '''
-      logger.debug("_sendForceLine nullPathLine")
+      self.logger.debug("_sendForceLine nullPathLine")
       self._sendForcedLine(PathLine.nullPathLine(turnHistory.end))
     # Assert sent exactly one forcing line.
   
@@ -126,7 +124,7 @@ class LineGeneratorMixin(object):
     Encapsulates how to send a forced line:
     - send a tuple where 2nd element is True.
     '''
-    logger.debug("sendForcedLine")
+    self.logger.debug("sendForcedLine")
     self.curveGenerator.send((line, True))
     
   
@@ -167,7 +165,7 @@ class LineGeneratorMixin(object):
     if len(directions) > 3:
       # a path with four directions can't be approximated with one vector
       # end point is starting pixel of segment ???
-      #logger.debug("Four directions")
+      #self.logger.debug("Four directions")
       self.resetLineFittingFilter()
       # Note end is previousTurn, not current Turn
       return PathLine(startTurn, previousTurn)
@@ -177,7 +175,7 @@ class LineGeneratorMixin(object):
     vectorViaAllTurns = currentTurn - history.start
       
     if constraints.isViolatedBy(vector=vectorViaAllTurns):
-      logger.debug("Line for constraint violation") # , constraints, "vector", vectorViaAllTurns
+      self.logger.debug("Line for constraint violation") # , constraints, "vector", vectorViaAllTurns
       result = self._interpolateConstraintViolating(history, firstNonsatisfingTurn=currentTurn)
       # reset
       constraints.__init__()
@@ -204,11 +202,11 @@ class LineGeneratorMixin(object):
       Another alternative  is to send two lines (with the second being forcing.)
       Note that this does not catch all reversals in turns: history.end might not be the extreme turn.
       '''
-      logger.debug("Reversal in turns")
+      self.logger.debug("Reversal in turns")
       """
       assert not history.isCollapsed(), 'No consecutive forces'
       result = PathLine(history.start, history.end)
-      logger.debug( "Force PathLine %s %s", str(history.start), str(history.end))
+      self.logger.debug( "Force PathLine %s %s", str(history.start), str(history.end))
       history.roll()
       """
       result = PathLine.nullPathLine(currentTurn)
@@ -216,7 +214,7 @@ class LineGeneratorMixin(object):
     else: # Current turn is different from history.start
       # Better to send two lines??
       result = PathLine(history.start, currentTurn)
-      logger.debug( "Force PathLine %s %s", str(history.start), str(currentTurn))
+      self.logger.debug( "Force PathLine %s %s", str(history.start), str(currentTurn))
       history.collapse(currentTurn)
     # Forcing makes history collapsed on the currentTurn.
     assert history.isCollapsed()

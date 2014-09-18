@@ -3,18 +3,13 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import logging
-
-from PyQt5.QtCore import QTime
+#from PyQt5.QtCore import QTime
 
 from .utils.history import History
 
 # Alternatives: uncomment only one
 #from .turnDetector.simpleTurnDetector import SimpleTurnDetector as TurnDetector
 from .turnDetector.reverseDetector import ReverseDetector as TurnDetector
-
-logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.DEBUG)
 
 
 
@@ -69,7 +64,7 @@ class TurnGeneratorMixin(object):
   
     
   def flushTurnGenerator(self, history):
-    logger.debug("Flush")  
+    self.logger.debug("Flush turn generator")  
     if not history.isCollapsed():
       ''' Have position not sent. Send a turn at last known position. '''
       self.lineGenerator.send((history.end, True)) # force a Turn 

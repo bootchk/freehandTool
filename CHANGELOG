@@ -45,3 +45,10 @@ Version 0.2
 Convert to Python3 compatible code.
 Convert to PyQt5. To undo, replace PyQt5->PyQt4 and QtWidgets->QtGui.
 
+Version 0.3
+===========
+Eliminate import logging for production code.
+Eliminate import __future__
+
+
+

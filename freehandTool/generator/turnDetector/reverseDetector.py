@@ -3,14 +3,13 @@ Copyright 2013 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-import logging
+
 from copy import copy
 
 from .turnDetector import TurnDetector
 from ..utils.axis import Axis
+from ...logger import logger
 
-logger = logging.getLogger(__name__)  # module level logger
-logger.setLevel(level=logging.DEBUG)
 
 
 class ReverseDetector(TurnDetector):
