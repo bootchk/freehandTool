@@ -332,7 +332,7 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   TODO write doctests for these
   '''
 
-  def __init__(self):
+  def __init__(self, view):
     super(FreehandTool, self).__init__()
     # See below: _initFilterPipe creates self.turnGenerator, etc.
     self._resetState()
@@ -341,6 +341,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     
     self.logger = logger
     self.logger.debug("Init FreehandTool")
+    
+    self.view = view
     
     
   def _resetState(self):
@@ -579,10 +581,8 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
   
   def mapFromDeviceToScene(self, pointVCS):
     '''
-    Map from device coords (pipeline input) to freehandTool internal CS.
-    Which here is Scene CS.
-    Must be real valued.
-    Must be mappable to Local CS of SegmentString.
+    Map from device coords (pipeline input) to freehandTool internal CS (which is Scene CS.)
+    Result is real valued, mappable to Local CS of SegmentString.
     
     Depends on Qt.
     '''
@@ -593,7 +593,11 @@ class FreehandTool(TurnGeneratorMixin, LineGeneratorMixin, CurveGeneratorMixin, 
     assert isinstance(pointVCS.x(), int)
     assert isinstance(pointVCS.y(), int)
     
-    # Hack: tool knows segmentString which knows scene which knows view which can map VCS to SCS
+    """
+    OLD
+    Hack: tool knows segmentString which knows scene which knows view which can map VCS to SCS
     result = self.path.scene().views()[0].mapToScene(pointVCS)
+    """
+    result = self.view.mapToScene(pointVCS) # self knows it's view which maps
     #assert isinstance(result, QPointF)
     return result
