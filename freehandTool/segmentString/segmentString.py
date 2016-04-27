@@ -55,9 +55,13 @@ It currently depends on all segments being the same type having the same count o
 Cuspness deserialized.
 '''
 
-from PyQt5.QtGui import QPainterPath
-from PyQt5.QtCore import QPointF
-from PyQt5.QtWidgets import QGraphicsPathItem
+try:
+  from PyQt5.QtGui import QPainterPath
+  from PyQt5.QtCore import QPointF
+  from PyQt5.QtWidgets import QGraphicsPathItem
+except ImportError:
+  from PySide.QtCore import QPointF
+  from PySide.QtGui import QPainterPath, QGraphicsPathItem
 
 from .segment import CurveSegment
 from .relations import Relations

@@ -3,7 +3,10 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-from PyQt5.QtCore import QLine
+try:
+  from PyQt5.QtCore import QLine
+except ImportError:
+  from PySide.QtCore import QLine
 from .pointerPoint import PointerPoint
 
 class PathLine(QLine):

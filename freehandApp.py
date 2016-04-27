@@ -7,16 +7,20 @@ Copyright 2012 Lloyd Konneker
 This is free software, covered by the GNU General Public License.
 '''     
 
-# Set PyQt API version to 2
-import sip
-API_NAMES = ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]
-API_VERSION = 2
-for name in API_NAMES:
-  sip.setapi(name, API_VERSION)
-  
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+try:
+    # Set PyQt API version to 2
+    import sip
+    API_NAMES = ["QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"]
+    API_VERSION = 2
+    for name in API_NAMES:
+      sip.setapi(name, API_VERSION)
+
+    from PyQt5.QtCore import *
+    from PyQt5.QtWidgets import *
+    from PyQt5.QtGui import *
+except ImportError:
+    from PySide.QtCore import *
+    from PySide.QtGui import *
 
 import sys
 
