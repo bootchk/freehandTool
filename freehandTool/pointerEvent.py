@@ -2,8 +2,12 @@
 '''
 
 
-from PyQt5.QtCore import QEvent, QPointF, QPoint
-from PyQt5.QtWidgets import QGraphicsView
+try:
+  from PyQt5.QtCore import QEvent, QPointF, QPoint
+  from PyQt5.QtWidgets import QGraphicsView
+except ImportError:
+  from PySide.QtCore import QEvent, QPointF, QPoint
+  from PySide.QtGui import QGraphicsView
 from .type.pointerPoint import PointerPoint
 
 

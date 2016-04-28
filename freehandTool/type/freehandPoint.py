@@ -3,7 +3,10 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-from PyQt5.QtCore import QPointF
+try:
+  from PyQt5.QtCore import QPointF
+except ImportError:
+  from PySide.QtCore import QPointF
 
 
 def sign(x):

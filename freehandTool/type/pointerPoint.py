@@ -3,7 +3,10 @@ Copyright 2012 Lloyd Konneker
 
 This is free software, covered by the GNU General Public License.
 '''
-from PyQt5.QtCore import QPoint
+try:
+  from PyQt5.QtCore import QPoint
+except ImportError:
+  from PySide.QtCore import QPoint
 
 
 

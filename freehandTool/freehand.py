@@ -288,7 +288,11 @@ Segments are converted to Local CS (float) of SegmentString when appended.
 
 # !!! QTime for timing of paused forcing
 # !!! This not depend on QtGui.  SegmentString depends on QtGui.
-from PyQt5.QtCore import QObject, QTimer
+try:
+  from PyQt5.QtCore import QObject, QTimer
+except ImportError:
+  from PySide.QtCore import QObject, QTimer
+
 
 
 from .generator.turnGenerator import TurnGeneratorMixin

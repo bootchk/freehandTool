@@ -15,9 +15,13 @@ Derived from ghostLine, which is a QGLineItem, whereas this is a QGPathItem,
 so that it follows the pointer track with more fidelity.
 '''
 
-from PyQt5.QtWidgets import QGraphicsPathItem
-from PyQt5.QtGui import QPainterPath
-from PyQt5.QtCore import QPoint
+try:
+  from PyQt5.QtWidgets import QGraphicsPathItem
+  from PyQt5.QtGui import QPainterPath
+  from PyQt5.QtCore import QPoint
+except ImportError:
+  from PySide.QtCore import QPoint
+  from PySide.QtGui import QGraphicsPathItem, QPainterPath
 
 from .type.freehandPoint import FreehandPoint
 
